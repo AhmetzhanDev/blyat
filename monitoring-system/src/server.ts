@@ -45,24 +45,17 @@ interface JWTPayload {
 
 // Middleware для аутентификации WebSocket
 io.use((socket, next) => {
-  console.log('[WS-DEBUG] Попытка подключения к WebSocket');
   const token = socket.handshake.auth.token;
   
   if (!token) {
-    console.log('[WS-DEBUG] Ошибка: токен не предоставлен');
     return next(new Error('Токен не предоставлен'));
   }
 
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET!) as JWTPayload;
     socket.data.user = decoded;
-    console.log('[WS-DEBUG] Успешная аутентификация WebSocket:', {
-      socketId: socket.id,
-      userId: decoded.userId
-    });
     next();
   } catch (error) {
-    console.log('[WS-DEBUG] Ошибка аутентификации:', error);
     return next(new Error('Недействительный токен'));
   }
 });
@@ -70,41 +63,15 @@ io.use((socket, next) => {
 // WebSocket подключения
 io.on('connection', (socket: Socket) => {
   const userId = socket.data.user?.id;
-  console.log('[WS-DEBUG] Новое WebSocket подключение:', {
-    socketId: socket.id,
-    userId: userId,
-    timestamp: new Date().toISOString()
-  });
   
-  // Логируем все события
-  socket.onAny((event, ...args) => {
-    console.log('[WS-DEBUG] Получено событие:', {
-      event,
-      socketId: socket.id,
-      userId: userId,
-      args,
-      timestamp: new Date().toISOString()
-    });
-  });
-
   // Обработчик отключения
-  socket.on('disconnect', (reason) => {
-    console.log('[WS-DEBUG] Клиент отключился:', {
-      socketId: socket.id,
-      userId: userId,
-      reason,
-      timestamp: new Date().toISOString()
-    });
+  socket.on('disconnect', () => {
+    // Очищаем ресурсы при отключении
   });
 
   // Обработчик ошибок
   socket.on('error', (error) => {
-    console.error('[WS-DEBUG] Ошибка WebSocket:', {
-      socketId: socket.id,
-      userId: userId,
-      error,
-      timestamp: new Date().toISOString()
-    });
+    console.error('Ошибка WebSocket:', error);
   });
 });
 
@@ -124,7 +91,6 @@ const PORT = process.env.PORT || 3001;
 httpServer.listen(PORT, async () => {
   console.log(`Сервер запущен на порту ${PORT}`);
   console.log(`API доступен по адресу: http://localhost:${PORT}/api`);
-  console.log(`WebSocket сервер запущен на ws://localhost:${PORT}`);
   
   // Инициализируем админский клиент при запуске сервера
   try {

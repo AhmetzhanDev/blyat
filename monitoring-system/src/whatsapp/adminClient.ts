@@ -5,6 +5,10 @@ import path from 'path';
 import fs from 'fs';
 import { io } from '../server';
 import { UserModel } from '../models/User';
+import { WhatsAppAccountModel } from '../models/WhatsAppAccount';
+import { CompanySettings } from '../models/CompanySettings';
+import { TelegramService } from '../telegram/telegramClient';
+import { MessageMonitor } from './messageMonitor';
 
 const ADMIN_ID = 'admin';
 const SESSION_DIR = path.join(process.cwd(), '.wwebjs_auth', 'session-admin');
@@ -12,6 +16,10 @@ const SESSION_FILE = path.join(SESSION_DIR, 'session-data.json');
 let adminClient: Client | null = null;
 let verificationCode: string | null = null;
 let isClientReady = false;
+
+const telegramService = TelegramService.getInstance();
+const messageMonitor = MessageMonitor.getInstance();
+const activeTimers = new Map<string, NodeJS.Timeout>();
 
 interface SessionData {
   WABrowserId?: string;
@@ -287,41 +295,7 @@ export const initAdminClient = async (): Promise<void> => {
     });
 
     adminClient.on('message', async (message) => {
-      try {
-        if (!isClientReady) {
-          console.log('Клиент не готов к отправке сообщений');
-          return;
-        }
-
-        const messageText = message.body.toLowerCase().trim();
-        console.log('Получено сообщение:', messageText, 'от:', message.from);
-
-        if (messageText === 'код') {
-          verificationCode = generateVerificationCode();
-          console.log(`Попытка отправить код: ${verificationCode} пользователю: ${message.from}`);
-          
-          try {
-            // Используем sendMessage вместо reply
-            await adminClient?.sendMessage(message.from, `Ваш код подтверждения: ${verificationCode}`);
-            console.log(`Код успешно отправлен: ${verificationCode} пользователю: ${message.from}`);
-            
-            io.emit('admin:verification_code', {
-              code: verificationCode,
-              timestamp: Date.now(),
-              recipient: message.from
-            });
-          } catch (error: any) {
-            console.error('Ошибка при отправке кода:', error);
-            try {
-              await adminClient?.sendMessage(message.from, 'Произошла ошибка при отправке кода. Пожалуйста, попробуйте еще раз.');
-            } catch (sendError: any) {
-              console.error('Ошибка при отправке сообщения об ошибке:', sendError);
-            }
-          }
-        }
-      } catch (error: any) {
-        console.error('Ошибка при обработке сообщения:', error);
-      }
+      await messageMonitor.handleMessage(message);
     });
 
     // Инициализируем клиент

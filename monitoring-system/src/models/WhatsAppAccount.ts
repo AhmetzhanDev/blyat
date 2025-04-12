@@ -4,6 +4,7 @@ import { IUser } from './User';
 export interface IWhatsAppAccount extends Document {
   userId: IUser['_id'];
   companyName: string;
+  companyId: string;
   avgResponseTime: number;
   secondTouch: boolean;
   phoneNumber: string;
@@ -21,6 +22,10 @@ const whatsAppAccountSchema = new Schema<IWhatsAppAccount>({
   companyName: { 
     type: String, 
     required: true 
+  },
+  companyId: {
+    type: String,
+    required: true
   },
   avgResponseTime: { 
     type: Number, 

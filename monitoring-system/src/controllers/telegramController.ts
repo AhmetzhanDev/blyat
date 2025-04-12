@@ -38,4 +38,32 @@ export class TelegramController {
       res.status(500).json({ error: 'Ошибка при отключении Telegram клиента' });
     }
   }
+
+  public async makeBotAdmin(req: Request, res: Response): Promise<void> {
+    try {
+      const { groupId } = req.body;
+      
+      if (!groupId) {
+        res.status(400).json({ 
+          success: false, 
+          message: 'Необходимо указать ID группы' 
+        });
+        return;
+      }
+
+      await this.telegramService.makeBotAdmin(groupId);
+      
+      res.status(200).json({ 
+        success: true, 
+        message: 'Бот успешно назначен администратором группы' 
+      });
+    } catch (error) {
+      console.error('Ошибка при назначении бота администратором:', error);
+      res.status(500).json({ 
+        success: false, 
+        message: 'Ошибка при назначении бота администратором',
+        error: error instanceof Error ? error.message : 'Неизвестная ошибка'
+      });
+    }
+  }
 } 
