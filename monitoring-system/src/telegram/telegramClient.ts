@@ -182,7 +182,7 @@ export class TelegramService {
                 },
                 body: JSON.stringify({
                   chat_id: botGroupId,
-                  text: "Здравствуйте, это бот SaleScout"
+                  text: "Здравствуйте, это бот Sales-Track"
                 })
               });
 

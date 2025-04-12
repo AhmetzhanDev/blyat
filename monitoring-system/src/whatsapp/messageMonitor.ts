@@ -27,6 +27,12 @@ export class MessageMonitor {
       console.log(`[${timestamp}] 📱 Получено сообщение от: ${message.from}`);
       console.log(`[${timestamp}] 📝 Текст сообщения: "${message.body}"`);
 
+      // Проверяем, является ли это исходящим сообщением
+      if (message.fromMe) {
+        console.log(`[${timestamp}] 👤 Получено исходящее сообщение`);
+        return;
+      }
+
       // Проверяем номер отправителя в базе данных
       const cleanPhoneNumber = message.from.replace('@c.us', '').replace('+', '').replace(/\D/g, '');
       console.log(`[${timestamp}] 🔍 Ищем номер в базе: ${cleanPhoneNumber}`);
@@ -38,86 +44,68 @@ export class MessageMonitor {
       if (user) {
         console.log(`[${timestamp}] ✅ Найден пользователь:`, user);
         
-        // Находим настройки компании для этого пользователя
         const companySettings = await CompanySettings.findOne({ userId: user._id });
         if (companySettings && companySettings.companies.length > 0) {
-          const company = companySettings.companies[0]; // Берем первую компанию
+          const company = companySettings.companies[0];
           console.log(`[${timestamp}] ✅ Найдена компания:`, company);
 
-          // Запускаем таймер для проверки ответа
+          // Если уже есть активный таймер, отменяем его
           if (this.activeTimers.has(message.from)) {
-            console.log(`[${timestamp}] 🔄 Сбрасываем предыдущий таймер для ${message.from}`);
+            console.log(`[${timestamp}] 🔄 Перезапускаем таймер для ${message.from}`);
             clearTimeout(this.activeTimers.get(message.from));
           }
 
+          // Запускаем новый таймер
           const timer = setTimeout(async () => {
             const currentTimestamp = new Date().toISOString();
             console.log(`[${currentTimestamp}] ⚠️ Время ответа истекло для ${message.from}`);
-            console.log(`[${currentTimestamp}] ⏰ Прошло ${company.managerResponse} минут без ответа`);
             
             if (company.telegramGroupId) {
-              console.log(`[${currentTimestamp}] 📢 Отправляем уведомление в Telegram группу ${company.telegramGroupId}`);
               try {
-                const reminderMessage = `⚠️ ВНИМАНИЕ! ⚠️\n\nВ WhatsApp-чате ${company.nameCompany} не ответили на сообщение в течение ${company.managerResponse} минут!\n\nСсылка на чат: https://wa.me/${message.from.replace('@c.us', '')}`;
+                const reminderMessage = `⚠️ ВНИМАНИЕ! ⚠️\n\nВ WhatsApp-чате не ответили на сообщение в течение ${company.managerResponse} минут!\n\nСсылка на чат: https://wa.me/${cleanPhoneNumber}`;
                 
-                // Проверяем инициализацию Telegram сервиса
                 if (!this.telegramService) {
                   throw new Error('Telegram сервис не инициализирован');
                 }
                 
-                // Преобразуем ID группы в число
-                const groupId = company.telegramGroupId.toString();
-                console.log(`[${currentTimestamp}] 🔍 Исходный ID группы: ${company.telegramGroupId}`);
-                console.log(`[${currentTimestamp}] 🔍 Преобразованный ID группы: ${groupId}`);
-                
-                if (!groupId) {
-                  throw new Error('Неверный формат ID группы Telegram');
-                }
-                
-                // Проверяем подключение к Telegram
                 const isConnected = await this.telegramService.isConnected();
-                console.log(`[${currentTimestamp}] 🔍 Статус подключения к Telegram: ${isConnected}`);
-                
                 if (!isConnected) {
-                  console.log(`[${currentTimestamp}] 🔄 Переподключаемся к Telegram...`);
                   await this.telegramService.initialize();
                 }
                 
-                // Отправляем сообщение
-                console.log(`[${currentTimestamp}] 📤 Отправка сообщения в группу ${groupId}...`);
-                await this.telegramService.sendMessage(groupId, reminderMessage);
-                console.log(`[${currentTimestamp}] ✅ Сообщение успешно отправлено в группу ${groupId}`);
-              } catch (error: any) {
-                console.error(`[${currentTimestamp}] ❌ Ошибка при отправке в Telegram:`, error);
-                console.error(`[${currentTimestamp}] 🔍 Детали ошибки:`, error.message);
-                
-                // Пробуем переподключиться и отправить снова
-                try {
-                  console.log(`[${currentTimestamp}] 🔄 Пробуем переподключиться и отправить снова...`);
-                  await this.telegramService.initialize();
-                  const retryMessage = `⚠️ ВНИМАНИЕ! ⚠️\n\nВ WhatsApp-чате ${company.nameCompany} не ответили на сообщение в течение ${company.managerResponse} минут!\n\nСсылка на чат: https://wa.me/${message.from.replace('@c.us', '')}`;
-                  await this.telegramService.sendMessage((- + Number(company.telegramGroupId)).toString(), retryMessage);
-                  console.log(`[${currentTimestamp}] ✅ Сообщение отправлено после переподключения`);
-                } catch (retryError: any) {
-                  console.error(`[${currentTimestamp}] ❌ Ошибка при повторной отправке:`, retryError);
-                }
+                await this.telegramService.sendMessage(`-${company.telegramGroupId}`, reminderMessage);
+                console.log(`[${currentTimestamp}] ✅ Уведомление отправлено в Telegram`);
+              } catch (error) {
+                console.error(`[${currentTimestamp}] ❌ Ошибка при отправке уведомления:`, error);
               }
-            } else {
-              console.log(`[${currentTimestamp}] ⚠️ Telegram группа не настроена для компании ${company.nameCompany}`);
             }
           }, company.managerResponse * 60 * 1000);
 
           this.activeTimers.set(message.from, timer);
           console.log(`[${timestamp}] ⏳ Запущен таймер на ${company.managerResponse} минут для ${message.from}`);
-          console.log(`[${timestamp}] 📝 Ожидаем ответа до ${new Date(Date.now() + company.managerResponse * 60 * 1000).toISOString()}`);
-        } else {
-          console.log(`[${timestamp}] ⚠️ Настройки компании не найдены для пользователя`);
         }
-      } else {
-        console.log(`[${timestamp}] ⚠️ Номер ${message.from} не найден в базе данных`);
       }
     } catch (error) {
       console.error(`[${new Date().toISOString()}] ❌ Ошибка при обработке сообщения:`, error);
+    }
+  }
+
+  public async handleOutgoingMessage(message: Message): Promise<void> {
+    try {
+      const timestamp = new Date().toISOString();
+      console.log(`[${timestamp}] 📤 Исходящее сообщение от админа:`);
+      console.log(`[${timestamp}] 📝 Текст: "${message.body}"`);
+      console.log(`[${timestamp}] 👤 Получатель: ${message.to}`);
+
+      // Отключаем таймер при отправке ответа
+      if (this.activeTimers.has(message.to)) {
+        console.log(`[${timestamp}] 🛑 Отключаем таймер для ${message.to}`);
+        clearTimeout(this.activeTimers.get(message.to));
+        this.activeTimers.delete(message.to);
+        console.log(`[${timestamp}] ✅ Таймер успешно отключен`);
+      }
+    } catch (error) {
+      console.error(`[${new Date().toISOString()}] ❌ Ошибка при обработке исходящего сообщения:`, error);
     }
   }
 } 
