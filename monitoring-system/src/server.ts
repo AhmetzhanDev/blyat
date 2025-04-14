@@ -30,6 +30,7 @@ app.use(cors({
   credentials: true
 }));
 
+
 // Логирование всех запросов
 app.use(morgan('dev'));
 
@@ -93,13 +94,18 @@ httpServer.listen(PORT, async () => {
   console.log(`Сервер запущен на порту ${PORT}`);
   console.log(`API доступен по адресу: http://api.salestrack.kz${PORT}/api`);
   
-  // Инициализируем админский клиент при запуске сервера
+  
   try {
-    await initAdminClient();
-    console.log('Админский клиент готов к использованию');
-    
-    // Инициализация Telegram после WhatsApp
+    // Инициализируем Telegram клиент
     const telegramService = TelegramService.getInstance();
+    console.log('Инициализация Telegram клиента...');
+    
+    // Инициализируем админский клиент WhatsApp
+    console.log('Инициализация WhatsApp админского клиента...');
+    await initAdminClient();
+    console.log('Админский клиент WhatsApp готов к использованию');
+    
+    // Теперь инициализируем Telegram
     console.log('Ожидание кода подтверждения Telegram...');
     await telegramService.initialize();
     console.log('Telegram клиент готов к использованию');

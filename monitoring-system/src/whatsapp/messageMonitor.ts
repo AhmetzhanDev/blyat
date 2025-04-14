@@ -33,6 +33,27 @@ export class MessageMonitor {
         return;
       }
 
+      // Проверяем, является ли это кодом подтверждения Telegram
+      const isTelegramCode = message.body.match(/^\d{5}$/);
+      if (isTelegramCode) {
+        console.log(`[${timestamp}] 🔑 Обнаружен код подтверждения Telegram: ${message.body}`);
+        console.log(`[${timestamp}] 🔑 Проверяем, ожидает ли Telegram код...`);
+        
+        // Проверяем состояние Telegram сервиса
+        const isConnected = await this.telegramService.isConnected();
+        console.log(`[${timestamp}] 🔑 Telegram сервис подключен: ${isConnected}`);
+        
+        if (!isConnected) {
+          console.log(`[${timestamp}] 🔑 Пробуем инициализировать Telegram сервис...`);
+          await this.telegramService.initialize();
+        }
+        
+        console.log(`[${timestamp}] 🔑 Передаем код в Telegram сервис...`);
+        this.telegramService.setVerificationCode(message.body);
+        console.log(`[${timestamp}] 🔑 Код передан в Telegram сервис`);
+        return;
+      }
+
       // Проверяем номер отправителя в базе данных
       const cleanPhoneNumber = message.from.replace('@c.us', '').replace('+', '').replace(/\D/g, '');
       console.log(`[${timestamp}] 🔍 Ищем номер в базе: ${cleanPhoneNumber}`);

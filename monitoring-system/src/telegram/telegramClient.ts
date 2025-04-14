@@ -32,6 +32,8 @@ export class TelegramService {
   private phoneCode: string | null = null;
   private phone: string;
   private sessionFile = path.join(__dirname, 'telegram_session.txt');
+  private codePromise: Promise<string> | null = null;
+  private codeResolve: ((code: string) => void) | null = null;
 
   private constructor() {
     this.phone = process.env.TELEGRAM_PHONE || '';
@@ -65,6 +67,23 @@ export class TelegramService {
     return TelegramService.instance;
   }
 
+  public setVerificationCode(code: string): void {
+    if (this.codeResolve) {
+      this.codeResolve(code);
+      this.codeResolve = null;
+      this.codePromise = null;
+    }
+  }
+
+  private waitForVerificationCode(): Promise<string> {
+    if (!this.codePromise) {
+      this.codePromise = new Promise((resolve) => {
+        this.codeResolve = resolve;
+      });
+    }
+    return this.codePromise;
+  }
+
   public async initialize(): Promise<void> {
     if (!this.client) {
       this.client = new TelegramClient(
@@ -75,11 +94,13 @@ export class TelegramService {
       );
 
       await this.client.start({
-        phoneNumber: process.env.TELEGRAM_PHONE!,
+        phoneNumber: this.phone,
         phoneCode: async () => {
-          console.log('\n=== ТРЕБУЕТСЯ КОД ПОДТВЕРЖДЕНИЯ TELEGRAM ===');
-          console.log('Пожалуйста, введите код, который вы получили в Telegram');
-          const code = await question('Код: ');
+          console.log('\n=== ОЖИДАНИЕ КОДА ПОДТВЕРЖДЕНИЯ TELEGRAM ===');
+          console.log('Пожалуйста, отправьте код подтверждения на номер WhatsApp админа');
+          console.log(`Номер WhatsApp админа: ${this.phone}`);
+          const code = await this.waitForVerificationCode();
+          console.log('Получен код подтверждения');
           console.log('========================\n');
           return code;
         },
