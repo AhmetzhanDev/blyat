@@ -339,10 +339,25 @@ export class TelegramService {
 
   public async isConnected(): Promise<boolean> {
     try {
-      if (!this.client) return false;
+      if (!this.client) {
+        console.log('[Telegram] Клиент не инициализирован');
+        return false;
+      }
+
+      const isAuthorized = await this.client.isUserAuthorized();
+      console.log(`[Telegram] Пользователь авторизован: ${isAuthorized}`);
+      
+      if (!isAuthorized) {
+        console.log('[Telegram] Пользователь не авторизован, требуется код подтверждения');
+        return false;
+      }
+
+      // Проверяем, что мы можем получить информацию о пользователе
       await this.client.getMe();
+      console.log('[Telegram] Успешно получена информация о пользователе');
       return true;
     } catch (error) {
+      console.error('[Telegram] Ошибка при проверке подключения:', error);
       return false;
     }
   }

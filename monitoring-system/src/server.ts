@@ -94,22 +94,24 @@ httpServer.listen(PORT, async () => {
   console.log(`Сервер запущен на порту ${PORT}`);
   console.log(`API доступен по адресу: http://api.salestrack.kz${PORT}/api`);
   
-
-  
   try {
     // Инициализируем Telegram клиент
     const telegramService = TelegramService.getInstance();
     console.log('Инициализация Telegram клиента...');
+    await telegramService.initialize();
+    
+    // Проверяем авторизацию Telegram
+    const isTelegramAuthorized = await telegramService.isConnected();
+    if (!isTelegramAuthorized) {
+      console.log('Telegram клиент не авторизован. Ожидание кода подтверждения...');
+      return;
+    }
+    console.log('Telegram клиент успешно авторизован');
     
     // Инициализируем админский клиент WhatsApp
     console.log('Инициализация WhatsApp админского клиента...');
     await initAdminClient();
     console.log('Админский клиент WhatsApp готов к использованию');
-    
-    // Теперь инициализируем Telegram
-    console.log('Ожидание кода подтверждения Telegram...');
-    await telegramService.initialize();
-    console.log('Telegram клиент готов к использованию');
   } catch (error) {
     console.error('Ошибка при инициализации клиентов:', error);
   }
