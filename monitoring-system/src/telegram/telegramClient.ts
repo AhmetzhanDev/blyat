@@ -76,8 +76,13 @@ export class TelegramService {
 
       await this.client.start({
         phoneNumber: process.env.TELEGRAM_PHONE!,
-        password: async () => process.env.TELEGRAM_PASSWORD!,
-        phoneCode: async () => process.env.TELEGRAM_CODE!,
+        phoneCode: async () => {
+          console.log('\n=== ТРЕБУЕТСЯ КОД ПОДТВЕРЖДЕНИЯ TELEGRAM ===');
+          console.log('Пожалуйста, введите код, который вы получили в Telegram');
+          const code = await question('Код: ');
+          console.log('========================\n');
+          return code;
+        },
         onError: (err) => console.error('Ошибка Telegram:', err),
       });
 

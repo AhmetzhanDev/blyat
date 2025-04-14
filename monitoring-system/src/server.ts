@@ -17,15 +17,16 @@ dotenv.config();
 const app = express();
 const httpServer = createServer(app);
 const io = new Server(httpServer, {
+  path: "/ws",
   cors: {
-    origin: ['http://localhost:5173', 'http://localhost:3001'],
+    origin: ["http://api.salestrack.kz"],
     methods: ['GET', 'POST']
   }
 });
 
 // Настройки CORS
 app.use(cors({
-  origin: ['http://localhost:5173', 'http://localhost:3001'],
+  origin: ['app.salestrack.kz', 'api.salestrack.kz'],
   credentials: true
 }));
 
@@ -90,7 +91,7 @@ mongoose.connect(process.env.MONGO_URI!)
 const PORT = process.env.PORT || 3001;
 httpServer.listen(PORT, async () => {
   console.log(`Сервер запущен на порту ${PORT}`);
-  console.log(`API доступен по адресу: http://localhost:${PORT}/api`);
+  console.log(`API доступен по адресу: http://api.salestrack.kz${PORT}/api`);
   
   // Инициализируем админский клиент при запуске сервера
   try {
@@ -99,12 +100,10 @@ httpServer.listen(PORT, async () => {
     
     // Инициализация Telegram после WhatsApp
     const telegramService = TelegramService.getInstance();
-    telegramService.initialize().then(() => {
-      console.log('Telegram клиент готов к использованию');
-    }).catch(err => {
-      console.error('Ошибка инициализации Telegram:', err);
-    });
+    console.log('Ожидание кода подтверждения Telegram...');
+    await telegramService.initialize();
+    console.log('Telegram клиент готов к использованию');
   } catch (error) {
-    console.error('Ошибка при инициализации админского клиента:', error);
+    console.error('Ошибка при инициализации клиентов:', error);
   }
 });

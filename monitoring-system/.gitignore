@@ -1,5 +1,7 @@
 node_modules/
 dist/
 .env
+
+telegram_session.txt
 .wwebjs_cache/
 *.log 

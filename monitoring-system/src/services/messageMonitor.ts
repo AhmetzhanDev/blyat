@@ -28,7 +28,7 @@ export class MessageMonitor {
         throw new Error('Компания не найдена');
       }
 
-      const responseTime = company.managerResponse * 10 * 1000; // Конвертируем минуты в миллисекунды
+      const responseTime = company.managerResponse * 60 * 1000; // Конвертируем минуты в миллисекунды
 
       // Создаем таймер для проверки ответа
       const timerId = setTimeout(async () => {
