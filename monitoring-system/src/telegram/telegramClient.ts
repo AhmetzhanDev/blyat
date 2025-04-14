@@ -125,8 +125,15 @@ export class TelegramService {
         if (!comp.telegramGroupId) {
           console.log(`Создание группы для компании ${comp.nameCompany}...`);
 
+          // Сначала получаем информацию о себе
+          const me = await this.client.getMe();
+          if (!me) {
+            throw new Error('Не удалось получить информацию о текущем пользователе');
+          }
+
+          // Создаем группу с собой в качестве участника
           const result = await this.client.invoke(new Api.messages.CreateChat({
-            users: [this.phone],
+            users: [me.id],
             title: comp.nameCompany
           }));
 
