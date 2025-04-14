@@ -19,7 +19,7 @@ const httpServer = createServer(app);
 const io = new Server(httpServer, {
   path: "/ws",
   cors: {
-    origin: ["http://api.salestrack.kz"],
+    origin: ['app.salestrack.kz', 'api.salestrack.kz'],
     methods: ['GET', 'POST']
   }
 });
@@ -94,6 +94,7 @@ httpServer.listen(PORT, async () => {
   console.log(`Сервер запущен на порту ${PORT}`);
   console.log(`API доступен по адресу: http://api.salestrack.kz${PORT}/api`);
   
+
   
   try {
     // Инициализируем Telegram клиент
