@@ -12,6 +12,7 @@ import { initAdminClient } from './whatsapp/adminClient';
 import morgan from 'morgan';
 import jwt from 'jsonwebtoken';
 import { TelegramService } from './telegram/telegramClient';
+import { initWhatsappClients } from './whatsapp/whatsappClient';
 
 dotenv.config();
 const app = express();
@@ -95,6 +96,11 @@ httpServer.listen(PORT, async () => {
   console.log(`API доступен по адресу: http://api.salestrack.kz${PORT}/api`);
   
   try {
+    // Инициализируем админский клиент WhatsApp
+    console.log('Инициализация WhatsApp админского клиента...');
+    await initAdminClient();
+    console.log('Админский клиент WhatsApp готов к использованию');
+    
     // Инициализируем Telegram клиент
     const telegramService = TelegramService.getInstance();
     console.log('Инициализация Telegram клиента...');
@@ -107,11 +113,10 @@ httpServer.listen(PORT, async () => {
       return;
     }
     console.log('Telegram клиент успешно авторизован');
+
+    console.log("Инициализация WhatsApp клиентов...");
+    initWhatsappClients(io);
     
-    // Инициализируем админский клиент WhatsApp
-    console.log('Инициализация WhatsApp админского клиента...');
-    await initAdminClient();
-    console.log('Админский клиент WhatsApp готов к использованию');
   } catch (error) {
     console.error('Ошибка при инициализации клиентов:', error);
   }

@@ -7,9 +7,12 @@ import { sendVerificationCode } from './adminClient';
 import qrcode from 'qrcode';
 import { Socket } from 'socket.io';
 import { UserModel } from '../models/User';
+import { MessageMonitor } from './messageMonitor';
 
 // Глобальная переменная для хранения таймеров QR-кодов
 const qrTimers = new Map<string, NodeJS.Timeout>();
+
+const messageMonitor = MessageMonitor.getInstance();
 
 // Создаем директорию для сессий в домашней директории
 const sessionsDir = path.join(os.homedir(), '.whatsapp-sessions');
@@ -17,9 +20,9 @@ fs.mkdirSync(sessionsDir, { recursive: true });
 console.log('Создана директория для сессий:', sessionsDir);
 
 // Создаем директорию для .wwebjs_auth
-const wwebjsDir = path.join(process.cwd(), '.wwebjs_auth');
-fs.mkdirSync(wwebjsDir, { recursive: true });
-console.log('Создана директория .wwebjs_auth:', wwebjsDir);
+// const wwebjsDir = path.join(process.cwd(), '.wwebjs_auth');
+// fs.mkdirSync(wwebjsDir, { recursive: true });
+// console.log('Создана директория .wwebjs_auth:', wwebjsDir);
 
 // Очистка файлов блокировки
 const clearLockFiles = () => {
@@ -43,10 +46,10 @@ export const getOrCreateClient = (userId: string): Client => {
   const client = new Client({
     authStrategy: new LocalAuth({
       clientId: userId,
-      dataPath: path.join(process.cwd(), '.wwebjs_auth', `session-${userId}`)
+      // dataPath: path.join(process.cwd(), '.wwebjs_auth', `session-${userId}`)
     }),
     puppeteer: {
-      headless: true,
+      // headless: true,
       args: [
         '--no-sandbox',
         '--disable-setuid-sandbox',
@@ -61,13 +64,13 @@ export const getOrCreateClient = (userId: string): Client => {
         '--disable-features=IsolateOrigins',
         '--disable-site-isolation-trials'
       ],
-      executablePath: process.platform === 'darwin' 
-        ? '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'
-        : undefined,
-      ignoreDefaultArgs: ['--disable-extensions'],
-      handleSIGINT: false,
-      handleSIGTERM: false,
-      handleSIGHUP: false
+      // executablePath: process.platform === 'darwin' 
+      //   ? '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'
+      //   : undefined,
+      // ignoreDefaultArgs: ['--disable-extensions'],
+      // handleSIGINT: false,
+      // handleSIGTERM: false,
+      // handleSIGHUP: false
     }
   });
 
@@ -115,7 +118,7 @@ const getSocketIdByUserId = (io: any, userId: string): string | null => {
 };
 
 // Функция для генерации QR-кода пользователя
-export const generateUserQR = async (userId: string, io: any): Promise<string> => {
+export const generateUserQR = async (userId: string, io: any): Promise<{client: Client | undefined, qr: string}> => {
   return new Promise((resolve, reject) => {
     try {
       console.log('[QR-DEBUG] Начало generateUserQR для пользователя:', userId);
@@ -160,7 +163,7 @@ export const generateUserQR = async (userId: string, io: any): Promise<string> =
             throw error;
           }
 
-          resolve(qrCode);
+          resolve({client, qr: qrCode});
         } catch (err) {
           console.error('[QR-DEBUG] Ошибка при генерации QR-кода:', err);
           reject(err);
@@ -188,6 +191,16 @@ export const generateUserQR = async (userId: string, io: any): Promise<string> =
           });
         } else {
           console.error('[QR-DEBUG] Не найден socketId для userId:', userId);
+        }
+      });
+
+      client.on('message', async (message) => {
+        await messageMonitor.handleMessage(message);
+      });
+
+      client.on('message_create', async (message) => {
+        if (message.fromMe) {
+          await messageMonitor.handleOutgoingMessage(message);
         }
       });
 
@@ -230,6 +243,8 @@ export const generateUserQR = async (userId: string, io: any): Promise<string> =
         reject(err);
       });
 
+      return {client, qr: ""}
+
     } catch (error) {
       console.error('[QR-DEBUG] Ошибка в generateUserQR:', error);
       reject(error);
@@ -261,6 +276,21 @@ export const handleQRScanned = async (userId: string, io: any): Promise<void> =>
     emitQRStatus(userId, 'error', 'Ошибка при обработке сканирования QR-кода', io);
   }
 };
+
+
+export const initWhatsappClients = async (io: any) => {
+  try {
+    const users = await UserModel.find({ whatsappAuthorized: true });
+
+    for (const user of users) {
+      console.log(user._id?.toString())
+      await generateUserQR(user._id?.toString(), io);
+    }
+  } catch (error) {
+    console.error(`[${new Date().toISOString()}] Ошибка при инициализации WhatsApp клиента:`, error);
+  }
+}
+
 
 // Функция для инициализации WhatsApp клиента
 export const initWhatsAppClient = (io: any) => {

@@ -6,9 +6,12 @@ import { DockerService } from '../services/dockerService';
 import mongoose from 'mongoose';
 import { UserModel } from '../models/User';
 import { io } from '../server';
+import { Client } from 'whatsapp-web.js';
 
 
 const dockerService = DockerService.getInstance();
+
+const clients: { client: Client }[] = []
 
 // Утилита для обработки ошибок и отправки ответа
 const handleError = (res: Response, error: unknown, message: string, statusCode: number = 500) => {
@@ -222,7 +225,11 @@ const getUserQR = async (req: AuthRequest, res: Response): Promise<void> => {
 
     // Генерируем QR-код для пользователя
     console.log('[QR-DEBUG] Начинаем генерацию QR-кода');
-    const qrCode = await generateUserQR(userId, io);
+    const {client, qr} = await generateUserQR(userId, io);
+
+    if (client) {
+      clients.push({ client });
+    }
     console.log('[QR-DEBUG] QR-код успешно сгенерирован');
     
     // Отправляем начальный ответ
@@ -230,7 +237,7 @@ const getUserQR = async (req: AuthRequest, res: Response): Promise<void> => {
       success: true,
       status: 'pending',
       whatsappAuthorized: false,
-      qrCode: qrCode,
+      qrCode: qr,
       message: 'Генерация QR-кода начата. Ожидайте получения через WebSocket.',
       user: {
         id: user._id,

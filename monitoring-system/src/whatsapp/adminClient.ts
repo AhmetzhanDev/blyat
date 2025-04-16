@@ -187,10 +187,10 @@ export const initAdminClient = async (): Promise<void> => {
     console.log('Начало инициализации админского клиента');
     
     // Создаем директорию для сессии, если её нет
-    if (!fs.existsSync(SESSION_DIR)) {
-      fs.mkdirSync(SESSION_DIR, { recursive: true });
-      console.log('Создана директория для админской сессии:', SESSION_DIR);
-    }
+    // if (!fs.existsSync(SESSION_DIR)) {
+      // fs.mkdirSync(SESSION_DIR, { recursive: true });
+      // console.log('Создана директория для админской сессии:', SESSION_DIR);
+    // }
 
     // Если клиент уже существует и готов, не инициализируем заново
     if (adminClient && isClientReady) {
@@ -204,21 +204,23 @@ export const initAdminClient = async (): Promise<void> => {
     adminClient = new Client({
       authStrategy: new LocalAuth({
         clientId: ADMIN_ID,
-        dataPath: SESSION_DIR
+        // dataPath: SESSION_DIR
       }),
       puppeteer: {
-        headless: true,
+        // headless: true,
         args: [
           '--no-sandbox',
           '--disable-setuid-sandbox',
-          '--disable-dev-shm-usage',
-          '--disable-accelerated-2d-canvas',
-          '--disable-gpu',
-          '--window-size=1920x1080',
+          // '--disable-dev-shm-usage',
+          // '--disable-accelerated-2d-canvas',
+          // '--disable-gpu',
+          // '--window-size=1920x1080',
         ],
-        executablePath: process.env.PUPPETEER_EXECUTABLE_PATH
+        // executablePath: process.env.PUPPETEER_EXECUTABLE_PATH
       }
     });
+
+    console.log("client:", adminClient)
 
     adminClient.on('qr', async (qr: string) => {
       try {
@@ -295,15 +297,15 @@ export const initAdminClient = async (): Promise<void> => {
     });
 
     adminClient.on('message', async (message) => {
-      await messageMonitor.handleMessage(message);
+      await messageMonitor.handleAdminMessage(message);
     });
     
     // Исходящие
-    adminClient.on('message_create', async (message) => {
-      if (message.fromMe) {
-        await messageMonitor.handleOutgoingMessage(message);
-      }
-    });
+    // adminClient.on('message_create', async (message) => {
+    //   if (message.fromMe) {
+    //     await messageMonitor.handleOutgoingMessage(message);
+    //   }
+    // });
 
     // Инициализируем клиент
     console.log('Инициализация админского клиента...');
