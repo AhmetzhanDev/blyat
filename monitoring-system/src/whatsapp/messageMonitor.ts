@@ -57,6 +57,14 @@ export class MessageMonitor {
             clearTimeout(this.activeTimers.get(message.to));
           }
 
+          // Отключаем таймер при отправке ответа
+          if (this.activeTimers.has(message.from)) {
+            console.log(`[${timestamp}] 🛑 Отключаем таймер для ${message.from}`);
+            clearTimeout(this.activeTimers.get(message.from));
+            this.activeTimers.delete(message.from);
+            console.log(`[${timestamp}] ✅ Таймер успешно отключен`);
+          }
+
           // Запускаем новый таймер
           const timer = setTimeout(async () => {
             const currentTimestamp = new Date().toISOString();

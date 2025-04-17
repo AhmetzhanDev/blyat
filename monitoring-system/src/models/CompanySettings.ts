@@ -27,6 +27,10 @@ const companySchema = new mongoose.Schema({
     type: String,
     required: false
   },
+  whatsappAuthorized: {
+    type: Boolean,
+    default: false
+  },
   createdAt: {
     type: Date,
     default: Date.now
