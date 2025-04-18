@@ -21,14 +21,14 @@ const httpServer = createServer(app);
 const io = new Server(httpServer, {
   path: "/ws",
   cors: {
-    origin: ['https://app.salestrack.kz', 'https://app.salestrack.kz'],
+    origin: ['https://app.salestrack.kz', 'https://api.salestrack.kz'],
     methods: ['GET', 'POST']
   }
 });
 
 // Настройки CORS
 app.use(cors({
-  origin: ['https://app.salestrack.kz', 'https://app.salestrack.kz'],
+  origin: ['https://app.salestrack.kz', 'https://api.salestrack.kz'],
   credentials: true
 }));
 
