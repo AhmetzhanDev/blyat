@@ -22,7 +22,7 @@ router.get('/accounts', authMiddleware, getWhatsAppAccounts);
 router.delete('/accounts/:accountId', authMiddleware, deleteWhatsAppAccount);
 
 // Маршруты для QR-кода
-router.get('/qr', authMiddleware, getUserQR);
+router.post('/qr', authMiddleware, getUserQR);
 router.post('/qr/scanned', authMiddleware, handleQRScanned);
 router.get('/qr/status', authMiddleware, getQRCodeStatus);
 

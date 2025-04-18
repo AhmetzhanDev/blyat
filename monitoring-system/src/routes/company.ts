@@ -26,6 +26,6 @@ router.delete('/settings/:userId/:companyId', deleteCompanySettings);
 router.get('/getData/:userId', getData);
 
 // Получение ссылки на Telegram для конкретной компании
-router.get('/telegram-link/:userId/:companyName', getTelegramLink);
+router.get('/telegram-link/:userId/:companyId', getTelegramLink);
 
 export default router; 

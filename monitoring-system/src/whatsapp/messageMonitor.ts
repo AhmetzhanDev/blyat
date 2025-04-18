@@ -39,61 +39,56 @@ export class MessageMonitor {
       const cleanPhoneNumber = message.to.replace('@c.us', '').replace('+', '').replace(/\D/g, '');
       console.log(`[${timestamp}] 🔍 Ищем номер в базе: ${cleanPhoneNumber}`);
       
-      const user = await UserModel.findOne({ 
-        phoneNumber: cleanPhoneNumber
-      });
+      // const user = await UserModel.findOne({ 
+      //   phoneNumber: cleanPhoneNumber
+      // });
 
-      if (user) {
-        console.log(`[${timestamp}] ✅ Найден пользователь:`, user);
-        
-        const companySettings = await CompanySettings.findOne({ userId: user._id });
-        if (companySettings && companySettings.companies.length > 0) {
-          const company = companySettings.companies[0];
-          console.log(`[${timestamp}] ✅ Найдена компания:`, company);
+      const company = await CompanySettings.findOne({ phoneNumber: cleanPhoneNumber });
+      if (company) {
+        console.log(`[${timestamp}] ✅ Найдена компания:`, company);
 
-          // Если уже есть активный таймер, отменяем его
-          if (this.activeTimers.has(message.to)) {
-            console.log(`[${timestamp}] 🔄 Перезапускаем таймер для ${message.to}`);
-            clearTimeout(this.activeTimers.get(message.to));
-          }
-
-          // Отключаем таймер при отправке ответа
-          if (this.activeTimers.has(message.from)) {
-            console.log(`[${timestamp}] 🛑 Отключаем таймер для ${message.from}`);
-            clearTimeout(this.activeTimers.get(message.from));
-            this.activeTimers.delete(message.from);
-            console.log(`[${timestamp}] ✅ Таймер успешно отключен`);
-          }
-
-          // Запускаем новый таймер
-          const timer = setTimeout(async () => {
-            const currentTimestamp = new Date().toISOString();
-            console.log(`[${currentTimestamp}] ⚠️ Время ответа истекло для ${message.to} (чат ${clientCleanPhoneNumber})`);
-            
-            if (company.telegramGroupId) {
-              try {
-                const reminderMessage = `⚠️ ВНИМАНИЕ! ⚠️\n\nВ WhatsApp-чате не ответили на сообщение в течение ${company.managerResponse} минут!\n\nСсылка на чат: https://wa.me/${clientCleanPhoneNumber}`;
-                
-                if (!this.telegramService) {
-                  throw new Error('Telegram сервис не инициализирован');
-                }
-                
-                const isConnected = await this.telegramService.isConnected();
-                if (!isConnected) {
-                  await this.telegramService.initialize();
-                }
-                
-                await this.telegramService.sendMessage(`-${company.telegramGroupId}`, reminderMessage);
-                console.log(`[${currentTimestamp}] ✅ Уведомление отправлено в Telegram`);
-              } catch (error) {
-                console.error(`[${currentTimestamp}] ❌ Ошибка при отправке уведомления:`, error);
-              }
-            }
-          }, company.managerResponse * 60 * 1000);
-
-          this.activeTimers.set(message.from, timer);
-          console.log(`[${timestamp}] ⏳ Запущен таймер на ${company.managerResponse} минут для ${message.to} (чат ${message.from})`);
+        // Если уже есть активный таймер, отменяем его
+        if (this.activeTimers.has(message.to)) {
+          console.log(`[${timestamp}] 🔄 Перезапускаем таймер для ${message.to}`);
+          clearTimeout(this.activeTimers.get(message.to));
         }
+
+        // Отключаем таймер при отправке ответа
+        if (this.activeTimers.has(message.from)) {
+          console.log(`[${timestamp}] 🛑 Отключаем таймер для ${message.from}`);
+          clearTimeout(this.activeTimers.get(message.from));
+          this.activeTimers.delete(message.from);
+          console.log(`[${timestamp}] ✅ Таймер успешно отключен`);
+        }
+
+        // Запускаем новый таймер
+        const timer = setTimeout(async () => {
+          const currentTimestamp = new Date().toISOString();
+          console.log(`[${currentTimestamp}] ⚠️ Время ответа истекло для ${message.to} (чат ${clientCleanPhoneNumber})`);
+          
+          if (company.telegramGroupId) {
+            try {
+              const reminderMessage = `⚠️ ВНИМАНИЕ! ⚠️\n\nВ WhatsApp-чате не ответили на сообщение в течение ${company.managerResponse} минут!\n\nСсылка на чат: https://wa.me/${clientCleanPhoneNumber}`;
+              
+              if (!this.telegramService) {
+                throw new Error('Telegram сервис не инициализирован');
+              }
+              
+              const isConnected = await this.telegramService.isConnected();
+              if (!isConnected) {
+                await this.telegramService.initialize();
+              }
+              
+              await this.telegramService.sendMessage(`-${company.telegramGroupId}`, reminderMessage);
+              console.log(`[${currentTimestamp}] ✅ Уведомление отправлено в Telegram`);
+            } catch (error) {
+              console.error(`[${currentTimestamp}] ❌ Ошибка при отправке уведомления:`, error);
+            }
+          }
+        }, (company?.managerResponse || 5) * 60 * 1000);
+
+        this.activeTimers.set(message.from, timer);
+        console.log(`[${timestamp}] ⏳ Запущен таймер на ${company.managerResponse} минут для ${message.to} (чат ${message.from})`);
       }
     } catch (error) {
       console.error(`[${new Date().toISOString()}] ❌ Ошибка при обработке сообщения:`, error);

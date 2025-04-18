@@ -2,10 +2,11 @@ import { Request, Response } from 'express';
 import { CompanySettings } from '../models/CompanySettings';
 import { v4 as uuidv4 } from 'uuid';
 import { TelegramService } from '../telegram/telegramClient';
+import { Types } from 'mongoose';
 
 export const saveCompanySettings = async (req: Request, res: Response) => {
   try {
-    const { userId, nameCompany, managerResponse, idCompany } = req.body;
+    const { userId, nameCompany, managerResponse, idCompany, companyId } = req.body;
 
     console.log('Попытка создания компании:', {
       userId,
@@ -14,7 +15,7 @@ export const saveCompanySettings = async (req: Request, res: Response) => {
       idCompany
     });
 
-    if (!userId || !nameCompany || !managerResponse || !idCompany) {
+    if (!userId || !nameCompany || !managerResponse || !idCompany || !companyId) {
       return res.status(400).json({
         success: false,
         message: 'Необходимо указать userId, название компании, время ответа менеджера и id компании'
@@ -30,35 +31,29 @@ export const saveCompanySettings = async (req: Request, res: Response) => {
       });
     }
 
-    // Создаем новую компанию с переданным ID
+    // Ищем существующие настройки пользователя или создаем новые
+    let settings = await CompanySettings.findOne({ _id: new Types.ObjectId(companyId) });
+
     const newCompany = {
       id: idCompany,
       nameCompany,
-      phoneNumber: req.body.phoneNumber,
+      phoneNumber: settings?.phoneNumber || '',
       managerResponse: responseTime,
+      companyId,
       createdAt: new Date()
     };
-
-    console.log('Создана новая компания:', newCompany);
-
-    // Ищем существующие настройки пользователя или создаем новые
-    let settings = await CompanySettings.findOne({ userId });
     
     if (settings) {
       // Добавляем новую компанию к существующим
-      settings.companies.push(newCompany);
-      console.log('Добавлена компания к существующим настройкам');
+      await CompanySettings.updateOne(
+        { _id: new Types.ObjectId(companyId) },
+        { ...newCompany }
+      )
+      console.log('Добавлена компания');
     } else {
       // Создаем новые настройки с первой компанией
-      settings = new CompanySettings({
-        userId,
-        companies: [newCompany]
-      });
-      console.log('Созданы новые настройки с первой компанией');
+      console.log("Компания не найдена")
     }
-
-    await settings.save();
-    console.log('Настройки успешно сохранены');
 
     // Создаем группы в Telegram для новых компаний
     const telegramService = TelegramService.getInstance();
@@ -83,9 +78,9 @@ export const getCompanySettings = async (req: Request, res: Response) => {
   try {
     const { userId } = req.params;
 
-    const settings = await CompanySettings.findOne({ userId });
+    const settings = await CompanySettings.find({ userId, phoneNumber: {$ne: null} });
 
-    if (!settings || settings.companies.length === 0) {
+    if (!settings || settings.length === 0) {
       return res.status(404).json({
         success: false,
         message: 'Компании не найдены'
@@ -94,7 +89,7 @@ export const getCompanySettings = async (req: Request, res: Response) => {
 
     res.status(200).json({
       success: true,
-      data: settings.companies
+      data: settings
     });
   } catch (error) {
     console.error('Ошибка при получении настроек компании:', error);
@@ -133,7 +128,7 @@ export const updateCompanySettings = async (req: Request, res: Response) => {
       });
     }
 
-    const settings = await CompanySettings.findOne({ userId });
+    const settings = await CompanySettings.findOne({ _id: new Types.ObjectId(companyId) });
     console.log('Найденные настройки пользователя:', settings);
 
     if (!settings) {
@@ -144,37 +139,21 @@ export const updateCompanySettings = async (req: Request, res: Response) => {
       });
     }
 
-    // Находим компанию для обновления
-    const companyIndex = settings.companies.findIndex(company => {
-      console.log('Сравниваем:', {
-        companyId,
-        companyIdInDB: company.id,
-        match: company.id === companyId
-      });
-      return company.id === companyId;
-    });
-
-    console.log('Индекс найденной компании:', companyIndex);
-
-    if (companyIndex === -1) {
-      console.log('Компания не найдена для companyId:', companyId);
-      return res.status(404).json({
-        success: false,
-        message: 'Компания не найдена'
-      });
+    if (!settings.telegramInviteLink) {
+      const telegramService = TelegramService.getInstance();
+      await telegramService.initialize();
+      await telegramService.createGroupsForCompanies([settings]);
     }
 
-    // Обновляем данные компании
-    settings.companies[companyIndex].nameCompany = nameCompany;
-    settings.companies[companyIndex].managerResponse = responseTime;
-
-    await settings.save();
-    console.log('Компания успешно обновлена');
+    await CompanySettings.updateOne(
+      { _id: new Types.ObjectId(companyId) },
+      { $set: { nameCompany, managerResponse } }
+    );
 
     res.status(200).json({
       success: true,
       message: 'Данные компании успешно обновлены',
-      data: settings.companies[companyIndex]
+      data: {...settings, nameCompany, managerResponse}
     });
   } catch (error) {
     console.error('Ошибка при обновлении данных компании:', error);
@@ -194,7 +173,7 @@ export const deleteCompanySettings = async (req: Request, res: Response) => {
       companyId
     });
 
-    const settings = await CompanySettings.findOne({ userId });
+    const settings = await CompanySettings.findOne({ userId, _id: new Types.ObjectId(companyId) });
     console.log('Найденные настройки пользователя:', settings);
 
     if (!settings) {
@@ -205,45 +184,13 @@ export const deleteCompanySettings = async (req: Request, res: Response) => {
       });
     }
 
-    // Если это последняя компания, удаляем весь документ
-    if (settings.companies.length === 1) {
-      console.log('Удаление последней компании, удаляем весь документ');
-      await CompanySettings.deleteOne({ userId });
-      return res.status(200).json({
-        success: true,
-        message: 'Последняя компания успешно удалена'
-      });
-    }
-
-    // Находим индекс компании для удаления
-    const companyIndex = settings.companies.findIndex(company => {
-      console.log('Сравниваем:', {
-        companyId,
-        companyIdInDB: company.id,
-        match: company.id === companyId
-      });
-      return company.id === companyId;
-    });
-
-    console.log('Индекс найденной компании:', companyIndex);
-
-    if (companyIndex === -1) {
-      console.log('Компания не найдена для companyId:', companyId);
-      return res.status(404).json({
-        success: false,
-        message: 'Компания не найдена'
-      });
-    }
-
-    // Удаляем компанию из массива
-    settings.companies.splice(companyIndex, 1);
-    await settings.save();
-    console.log('Компания успешно удалена');
-
-    res.status(200).json({
+    console.log('Удаление последней компании, удаляем весь документ');
+    await CompanySettings.deleteOne({ userId, _id: new Types.ObjectId(companyId) });
+    return res.status(200).json({
       success: true,
       message: 'Компания успешно удалена'
     });
+  
   } catch (error) {
     console.error('Ошибка при удалении компании:', error);
     res.status(500).json({
@@ -264,9 +211,9 @@ export const getData = async (req: Request, res: Response) => {
       });
     }
 
-    const settings = await CompanySettings.findOne({ userId });
+    const settings = await CompanySettings.find({ userId, phoneNumber: {$ne: null} });
 
-    if (!settings || settings.companies.length === 0) {
+    if (!settings || settings.length === 0) {
       return res.status(404).json({
         success: false,
         message: 'Компании не найдены'
@@ -274,8 +221,8 @@ export const getData = async (req: Request, res: Response) => {
     }
 
     res.status(200).json({
-      userId: settings.userId,
-      companies: settings.companies
+      userId: userId,
+      companies: settings
     });
   } catch (error) {
     console.error('Ошибка при получении данных:', error);
@@ -288,19 +235,14 @@ export const getData = async (req: Request, res: Response) => {
 
 export const getTelegramLink = async (req: Request, res: Response) => {
   try {
-    const { userId, companyName } = req.params;
-    const settings = await CompanySettings.findOne({ userId });
+    const { userId, companyId } = req.params;
+    const settings = await CompanySettings.findOne({ userId, _id: new Types.ObjectId(companyId) });
     
     if (!settings) {
       return res.status(404).json({ success: false, message: 'Настройки не найдены' });
     }
 
-    const company = settings.companies.find(c => c.nameCompany === companyName);
-    if (!company) {
-      return res.status(404).json({ success: false, message: 'Компания не найдена' });
-    }
-
-    res.status(200).json({ success: true, telegramInviteLink: company.telegramInviteLink });
+    res.status(200).json({ success: true, telegramInviteLink: settings.telegramInviteLink });
   } catch (error) {
     res.status(500).json({ success: false, message: 'Ошибка сервера' });
   }

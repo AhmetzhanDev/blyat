@@ -1,19 +1,24 @@
 import mongoose from 'mongoose';
 
-// Схема для отдельной компании
-const companySchema = new mongoose.Schema({
-  id: {
+// Основная схема настроек с массивом компаний
+const companySettingsSchema = new mongoose.Schema({
+  userId: {
     type: String,
     required: true,
-    unique: true
+    // unique: true
+  },
+  id: {
+    type: String,
+    required: false,
+    // unique: true
   },
   nameCompany: {
     type: String,
-    required: true
+    required: false
   },
   managerResponse: {
     type: Number,
-    required: true
+    required: false
   },
   telegramGroupId: {
     type: Number,
@@ -34,20 +39,10 @@ const companySchema = new mongoose.Schema({
   createdAt: {
     type: Date,
     default: Date.now
-  }
-});
-
-// Основная схема настроек с массивом компаний
-const companySettingsSchema = new mongoose.Schema({
-  userId: {
-    type: String,
-    required: true,
-    unique: true
   },
-  companies: [companySchema],
-  createdAt: {
-    type: Date,
-    default: Date.now
+  isRunning: {
+    type: Boolean,
+    default: false
   }
 });
 

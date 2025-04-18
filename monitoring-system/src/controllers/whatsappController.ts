@@ -7,11 +7,12 @@ import mongoose from 'mongoose';
 import { UserModel } from '../models/User';
 import { io } from '../server';
 import { Client } from 'whatsapp-web.js';
+import { CompanySettings } from '../models/CompanySettings';
 
 
 const dockerService = DockerService.getInstance();
 
-const clients: { client: Client }[] = []
+const clients: { client: Client, companyId: string }[] = []
 
 // Утилита для обработки ошибок и отправки ответа
 const handleError = (res: Response, error: unknown, message: string, statusCode: number = 500) => {
@@ -181,6 +182,8 @@ const getUserQR = async (req: AuthRequest, res: Response): Promise<void> => {
     console.log('[QR-DEBUG] Получен запрос на генерацию QR-кода');
     
     const userId = req.user?.id;
+    const companyId = req.body.companyId
+    
     if (!userId) {
       console.log('[QR-DEBUG] Ошибка: пользователь не авторизован');
       res.status(401).json({ 
@@ -201,19 +204,62 @@ const getUserQR = async (req: AuthRequest, res: Response): Promise<void> => {
       return;
     }
 
-    if (user.whatsappAuthorized) {
-      console.log('[QR-DEBUG] Пользователь уже авторизован в WhatsApp');
-      res.json({ 
-        success: true,
-        status: 'ready',
-        whatsappAuthorized: true,
-        message: 'WhatsApp клиент готов к работе',
-        user: {
-          id: user._id,
-          phoneNumber: user.phoneNumber
+    console.log(`CompanyId: ${companyId}`);
+
+    if (companyId) {
+      const company = await CompanySettings.findById(companyId);
+
+      if (!company) {
+        console.log('[QR-DEBUG] Ошибка: компания не найдена');
+        res.status(404).json({ 
+          success: false,
+          message: 'Компания не найдена'
+        });
+        return;
+      }
+
+      if (company?.whatsappAuthorized) {
+        res.json({ 
+          success: true,
+          status: 'ready',
+          whatsappAuthorized: true,
+          message: 'WhatsApp клиент готов к работе',
+          user: {
+            id: user._id,
+            phoneNumber: company.phoneNumber,
+            companyId: companyId,
+          }
+        });
+
+        return
+      }
+
+      const savedClient = clients.find(c => c.companyId === companyId);
+
+      if (!savedClient) {
+        const {client, qr} = await generateUserQR(userId, io, companyId);
+
+        if (client) {
+          clients.push({ client, companyId: companyId });
         }
-      });
-      return;
+        console.log('[QR-DEBUG] QR-код успешно сгенерирован');
+        
+        // Отправляем начальный ответ
+        res.json({ 
+          success: true,
+          status: 'pending',
+          whatsappAuthorized: false,
+          qrCode: qr,
+          message: 'Генерация QR-кода начата. Ожидайте получения через WebSocket.',
+          user: {
+            id: user._id,
+            phoneNumber: company.phoneNumber,
+            companyId: companyId,
+          }
+        });
+      }
+
+      return
     }
 
     // Если пользователь не авторизован, генерируем новый QR-код
@@ -225,10 +271,16 @@ const getUserQR = async (req: AuthRequest, res: Response): Promise<void> => {
 
     // Генерируем QR-код для пользователя
     console.log('[QR-DEBUG] Начинаем генерацию QR-кода');
-    const {client, qr} = await generateUserQR(userId, io);
+    let company = await CompanySettings.findOne({ userId, phoneNumber: null });
+
+    if (!company) {
+      company = await CompanySettings.create({ userId });
+    }
+
+    const {client, qr} = await generateUserQR(userId, io, company._id.toString());
 
     if (client) {
-      clients.push({ client });
+      clients.push({ client, companyId: company._id.toString() });
     }
     console.log('[QR-DEBUG] QR-код успешно сгенерирован');
     
@@ -241,7 +293,7 @@ const getUserQR = async (req: AuthRequest, res: Response): Promise<void> => {
       message: 'Генерация QR-кода начата. Ожидайте получения через WebSocket.',
       user: {
         id: user._id,
-        phoneNumber: user.phoneNumber
+        companyId: company._id.toString(),
       }
     });
     console.log('[QR-DEBUG] Ответ отправлен клиенту');

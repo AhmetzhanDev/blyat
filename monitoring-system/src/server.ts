@@ -13,6 +13,7 @@ import morgan from 'morgan';
 import jwt from 'jsonwebtoken';
 import { TelegramService } from './telegram/telegramClient';
 import { initWhatsappClients } from './whatsapp/whatsappClient';
+import { CompanySettings } from './models/CompanySettings';
 
 dotenv.config();
 const app = express();
@@ -94,6 +95,12 @@ const PORT = process.env.PORT || 3001;
 httpServer.listen(PORT, async () => {
   console.log(`Сервер запущен на порту ${PORT}`);
   console.log(`API доступен по адресу: http://api.salestrack.kz${PORT}/api`);
+
+  await CompanySettings.updateMany(
+    {},
+    { $set: {isRunning: false} },
+    { new: true }
+  );
   
   try {
     // Инициализируем админский клиент WhatsApp

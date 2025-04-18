@@ -241,12 +241,13 @@ export class TelegramService {
 
             comp.telegramInviteLink = inviteLink.link;
 
+            console.log(comp._id)
             await CompanySettings.updateOne(
-              { 'companies.id': comp.id },
+              { '_id': comp._id },
               {
                 $set: {
-                  'companies.$.telegramGroupId': comp.telegramGroupId,
-                  'companies.$.telegramInviteLink': comp.telegramInviteLink
+                  'telegramGroupId': comp.telegramGroupId,
+                  'telegramInviteLink': comp.telegramInviteLink
                 }
               }
             );

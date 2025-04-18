@@ -8,6 +8,8 @@ import qrcode from 'qrcode';
 import { Socket } from 'socket.io';
 import { UserModel } from '../models/User';
 import { MessageMonitor } from './messageMonitor';
+import { CompanySettings } from '../models/CompanySettings';
+import { Types } from 'mongoose';
 
 // Глобальная переменная для хранения таймеров QR-кодов
 const qrTimers = new Map<string, NodeJS.Timeout>();
@@ -42,10 +44,10 @@ const clearLockFiles = () => {
 export let qrStatus: { [userId: string]: 'pending' | 'scanned' | 'ready' | 'error' } = {};
 
 // Получение или создание клиента
-export const getOrCreateClient = (userId: string): Client => {
+export const getOrCreateClient = (companyId: string): Client => {
   const client = new Client({
     authStrategy: new LocalAuth({
-      clientId: userId,
+      clientId: `company-${companyId}`,
       // dataPath: path.join(process.cwd(), '.wwebjs_auth', `session-${userId}`)
     }),
     puppeteer: {
@@ -118,8 +120,28 @@ const getSocketIdByUserId = (io: any, userId: string): string | null => {
 };
 
 // Функция для генерации QR-кода пользователя
-export const generateUserQR = async (userId: string, io: any): Promise<{client: Client | undefined, qr: string}> => {
-  return new Promise((resolve, reject) => {
+export const generateUserQR = async (userId: string, io: any, companyId: string): Promise<{client: Client | undefined, qr: string}> => {
+  return new Promise(async (resolve, reject) => {
+    const settings = await CompanySettings.findOne({ userId, _id: new Types.ObjectId(companyId), whatsappAuthorized: true, isRunning: true });
+
+    if (settings) {
+      // const socketId = getSocketIdByUserId(io, userId);
+
+      // Отправляем событие только этому пользователю
+      // if (socketId) {
+        io.emit(`user:${userId}:ready`, {
+          status: 'ready',
+          message: 'WhatsApp клиент готов к работе',
+          timestamp: new Date().toISOString(),
+          whatsappAuthorized: true
+        });
+      // } else {
+      //   console.error('[QR-DEBUG] Не найден socketId для userId:', userId);
+      // }
+
+      return
+    }
+
     try {
       console.log('[QR-DEBUG] Начало generateUserQR для пользователя:', userId);
       
@@ -127,7 +149,17 @@ export const generateUserQR = async (userId: string, io: any): Promise<{client: 
         throw new Error('WebSocket не инициализирован');
       }
       
-      const client = getOrCreateClient(userId);
+      const client = getOrCreateClient(companyId);
+
+      await CompanySettings.findOneAndUpdate(
+        {
+          userId,
+          _id: new Types.ObjectId(companyId),
+        },
+        { isRunning: true },
+        { new: true }
+      );
+
       qrStatus[userId] = 'pending';
       emitQRStatus(userId, 'pending', 'Генерация QR-кода', io);
       
@@ -136,6 +168,20 @@ export const generateUserQR = async (userId: string, io: any): Promise<{client: 
         console.log('[QR-DEBUG] Получено событие QR для пользователя:', userId);
         try {
           console.log('[QR-DEBUG] Начало генерации QR-кода в формате base64');
+
+          await CompanySettings.findOneAndUpdate(
+            {
+              userId,
+              _id: new Types.ObjectId(companyId),
+              phoneNumber: null
+            },
+            { whatsappAuthorized: false },
+            { new: true }
+          ).then(() => {
+            console.log(`[QR-DEBUG] Статус WhatsApp обновлен на pending для пользователя ${userId} и компании ${companyId}`);
+          }).catch((error: Error) => {
+            console.error(`[QR-DEBUG] Ошибка при обновлении статуса WhatsApp:`, error);
+          });
           
           // Генерируем QR-код сразу в формате data:image/png;base64
           const qrCode = await qrcode.toDataURL(qr, {
@@ -183,15 +229,15 @@ export const generateUserQR = async (userId: string, io: any): Promise<{client: 
         const socketId = getSocketIdByUserId(io, userId);
 
         // Отправляем событие только этому пользователю
-        if (socketId) {
-          io.to(socketId).emit(`user:${userId}:scanned`, {
+        // if (socketId) {
+          io.emit(`user:${userId}:scanned`, {
             status: 'scanned',
             message: 'QR-код успешно отсканирован',
             timestamp: new Date().toISOString(),
           });
-        } else {
-          console.error('[QR-DEBUG] Не найден socketId для userId:', userId);
-        }
+        // } else {
+        //   console.error('[QR-DEBUG] Не найден socketId для userId:', userId);
+        // }
       });
 
       client.on('message', async (message) => {
@@ -204,36 +250,44 @@ export const generateUserQR = async (userId: string, io: any): Promise<{client: 
         }
       });
 
-      client.on('ready', () => {
+      client.on('ready', async () => {
         console.log('[QR-DEBUG] Клиент готов для пользователя:', userId);
         qrStatus[userId] = 'ready';
         emitQRStatus(userId, 'ready', 'WhatsApp клиент готов к работе', io);
         
         // Обновляем статус авторизации в БД
-        UserModel.findByIdAndUpdate(
-          userId,
-          { whatsappAuthorized: true },
+        await CompanySettings.findOneAndUpdate(
+          {
+            userId,
+            _id: new Types.ObjectId(companyId),
+            // phoneNumber: null
+          },
+          { 
+            whatsappAuthorized: true,
+            phoneNumber: client.info.wid._serialized.replace('@c.us', '').replace('+', '').replace(/\D/g, '')
+           },
           { new: true }
         ).then(() => {
-          console.log(`[QR-DEBUG] Статус WhatsApp обновлен на ready для пользователя ${userId}`);
+          console.log(`[QR-DEBUG] Статус WhatsApp обновлен на active для пользователя ${userId} и компании ${companyId}`);
         }).catch((error: Error) => {
           console.error(`[QR-DEBUG] Ошибка при обновлении статуса WhatsApp:`, error);
         });
         
         // Получаем socketId пользователя
-        const socketId = getSocketIdByUserId(io, userId);
+        // const socketId = getSocketIdByUserId(io, userId);
 
         // Отправляем событие только этому пользователю
-        if (socketId) {
-          io.to(socketId).emit(`user:${userId}:ready`, {
+        // if (socketId) {
+          io.emit(`user:${userId}:ready`, {
             status: 'ready',
             message: 'WhatsApp клиент готов к работе',
             timestamp: new Date().toISOString(),
             whatsappAuthorized: true
           });
-        } else {
-          console.error('[QR-DEBUG] Не найден socketId для userId:', userId);
-        }
+        // } else {
+        //   console.error('[QR-DEBUG] Не найден socketId для userId:', userId);
+        // }
+        resolve({client, qr: ""});
       });
 
       // Инициализируем клиент
@@ -280,11 +334,11 @@ export const handleQRScanned = async (userId: string, io: any): Promise<void> =>
 
 export const initWhatsappClients = async (io: any) => {
   try {
-    const users = await UserModel.find({ whatsappAuthorized: true });
+    const companies = await CompanySettings.find({ whatsappAuthorized: true });
 
-    for (const user of users) {
-      console.log(user._id?.toString())
-      await generateUserQR(user._id?.toString(), io);
+    for (const company of companies) {
+      console.log(company.userId?.toString())
+      await generateUserQR(company.userId?.toString(), io, company._id.toString());
     }
   } catch (error) {
     console.error(`[${new Date().toISOString()}] Ошибка при инициализации WhatsApp клиента:`, error);
