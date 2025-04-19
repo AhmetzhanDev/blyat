@@ -133,7 +133,8 @@ export const generateUserQR = async (userId: string, io: any, companyId: string)
           status: 'ready',
           message: 'WhatsApp клиент готов к работе',
           timestamp: new Date().toISOString(),
-          whatsappAuthorized: true
+          whatsappAuthorized: true,
+          companyId
         });
       // } else {
       //   console.error('[QR-DEBUG] Не найден socketId для userId:', userId);
@@ -282,7 +283,8 @@ export const generateUserQR = async (userId: string, io: any, companyId: string)
             status: 'ready',
             message: 'WhatsApp клиент готов к работе',
             timestamp: new Date().toISOString(),
-            whatsappAuthorized: true
+            whatsappAuthorized: true,
+            companyId
           });
         // } else {
         //   console.error('[QR-DEBUG] Не найден socketId для userId:', userId);
