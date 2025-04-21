@@ -33,6 +33,11 @@ export class MessageMonitor {
         return;
       }
 
+      if (message.from === 'status@broadcast') {
+        console.log(`[${timestamp}] 📱 Получено статусное сообщение`);
+        return;
+      }
+
       const clientCleanPhoneNumber = message.from.replace('@c.us', '').replace('+', '').replace(/\D/g, '');
 
       // Проверяем номер отправителя в базе данных
