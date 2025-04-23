@@ -7,11 +7,11 @@ import { MessageMonitor } from "./messageMonitor";
 import { CronJob } from "cron/dist";
 
 export const initCron = (messageMonitor: MessageMonitor) => {
-    new CronJob('44 7 * * *', async () => {
+    new CronJob('0 7 * * *', async () => {
         await getNotClosedChats();
     }).start()
 
-    new CronJob('0 10 * * *', async () => {
+    new CronJob('48 7 * * *', async () => {
         await sendNotClosedChatsMessage(messageMonitor);
     }).start()
 
@@ -34,6 +34,7 @@ const sendNotClosedChatsMessage = async (messageMonitor: MessageMonitor) => {
             i++
         }
 
+        await WhatsappChat.updateMany({ isClosed: false, sendMessage: true, companyId: company._id }, { sendMessage: false });
         console.log(company)
         console.log(message)
 
