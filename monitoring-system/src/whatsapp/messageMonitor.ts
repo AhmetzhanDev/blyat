@@ -49,21 +49,11 @@ public async handleMessage(message: Message): Promise<void> {
     console.log(`[${timestamp}] 📱 Получено сообщение от: ${message.from}`);
     console.log(`[${timestamp}] 📝 Текст сообщения: "${message.body}"`);
 
-    // Проверяем, является ли это исходящим сообщением
-    if (message.fromMe) {
-      console.log(`[${timestamp}] 👤 Получено исходящее сообщение`);
-      return;
-    }
-
-    if (message.from === 'status@broadcast') {
-      console.log(`[${timestamp}] 📱 Получено статусное сообщение`);
-      return;
-    }
-
     const clientCleanPhoneNumber = message.from.replace('@c.us', '').replace('+', '').replace(/\D/g, '');
     const cleanPhoneNumber = message.to.replace('@c.us', '').replace('+', '').replace(/\D/g, '');
     console.log(`[${timestamp}] 🔍 Ищем номер в базе: ${cleanPhoneNumber}`);
-    
+
+
     // Находим компанию по номеру телефона
     const company = await CompanySettings.findOne({ phoneNumber: cleanPhoneNumber });
     if (!company) {
@@ -109,6 +99,17 @@ public async handleMessage(message: Message): Promise<void> {
     } catch (error) {
       console.error(`[${timestamp}] ❌ Ошибка при сохранении сообщения:`, error);
       return; // Прерываем выполнение, если не удалось сохранить сообщение
+    }
+
+    // Проверяем, является ли это исходящим сообщением
+    if (message.fromMe) {
+      console.log(`[${timestamp}] 👤 Получено исходящее сообщение`);
+      return;
+    }
+
+    if (message.from === 'status@broadcast') {
+      console.log(`[${timestamp}] 📱 Получено статусное сообщение`);
+      return;
     }
 
     // Логика с таймером остается

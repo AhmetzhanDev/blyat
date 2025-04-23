@@ -11,7 +11,7 @@ const WhatsappChatSchema = new mongoose.Schema<IWhatsappChat>({
   chatId: {
     type: String,
     required: true,
-    unique: true, // Уникальный идентификатор чата
+    // unique: true, // Уникальный идентификатор чата
   },
   companyId: {
     type: mongoose.Schema.Types.ObjectId,
