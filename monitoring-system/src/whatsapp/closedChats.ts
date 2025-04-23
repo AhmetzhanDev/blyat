@@ -63,10 +63,10 @@ const getNotClosedChats = async () => {
 
 
 const getGptResponse = async (messages: any[]) => {
-    const openai = new OpenAI({ apiKey: "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" })
+    const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY! });
 
     const stream = await openai.beta.threads.createAndRun({
-        assistant_id: "asst_6T2srD02dgRdY3c95l0iaB9H",
+        assistant_id: "asst_hfqBBefvNBiC89R1TuCreQXk",
         thread: {
             messages: [
             { role: "user", content: messages.map(m => `${m.isEcho ? "Менеджер" : "Клиент"}: "${m.text}"`).join("\n\n") },
