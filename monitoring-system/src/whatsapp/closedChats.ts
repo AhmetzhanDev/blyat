@@ -7,11 +7,11 @@ import { MessageMonitor } from "./messageMonitor";
 import { CronJob } from "cron/dist";
 
 export const initCron = (messageMonitor: MessageMonitor) => {
-    new CronJob('16 11 * * *', async () => {
+    new CronJob('00 12 * * *', async () => {
         await getNotClosedChats();
     }).start()
 
-    new CronJob('25 11 * * *', async () => {
+    new CronJob('5 12 * * *', async () => {
         await sendNotClosedChatsMessage(messageMonitor);
     }).start()
 
@@ -48,16 +48,20 @@ const getNotClosedChats = async () => {
     console.log(chats)
 
     for (const chat of chats) {
-        const messages = await WhatsappMessage.find({ whatsappChatId: chat._id, createdAt: { $gt: new Date(Date.now() - 24 * 60 * 60 * 1000) }}).sort({ createdAt: -1 }).limit(10);
+        try {
+            const messages = await WhatsappMessage.find({ whatsappChatId: chat._id, createdAt: { $gt: new Date(Date.now() - 24 * 60 * 60 * 1000) }}).sort({ createdAt: -1 }).limit(10);
 
-        const response = await getGptResponse(messages);
+            const response = await getGptResponse(messages);
 
-        console.log("GPT response:", response)
+            console.log("GPT response:", response)
 
-        if (response === "true") {
-            await WhatsappChat.updateOne({ _id: chat._id }, { isClosed: true });
-        } else {
-            await WhatsappChat.updateOne({ _id: chat._id }, { sendMessage: true });
+            if (response === "true") {
+                await WhatsappChat.updateOne({ _id: chat._id }, { isClosed: true });
+            } else {
+                await WhatsappChat.updateOne({ _id: chat._id }, { sendMessage: true });
+            }
+        } catch (error) {
+            console.log(error)
         }
     }
 
