@@ -7,9 +7,9 @@ import { MessageMonitor } from "./messageMonitor";
 import { CronJob } from "cron/dist";
 
 export const initCron = (messageMonitor: MessageMonitor) => {
-    new CronJob('10 12 * * *', async () => {
+    new CronJob('10 7 * * *', async () => {
         await getNotClosedChats();
-    })
+    }).start()
 
     new CronJob('0 10 * * *', async () => {
         await sendNotClosedChatsMessage(messageMonitor);
