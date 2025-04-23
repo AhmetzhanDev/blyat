@@ -1,6 +1,12 @@
 import mongoose from 'mongoose';
 
-const WhatsappChatSchema = new mongoose.Schema({
+export interface IWhatsappChat extends Document {
+  chatId: string;
+  companyId: mongoose.Types.ObjectId;
+  isClosed: boolean;
+}
+
+const WhatsappChatSchema = new mongoose.Schema<IWhatsappChat>({
   chatId: {
     type: String,
     required: true,
@@ -11,6 +17,11 @@ const WhatsappChatSchema = new mongoose.Schema({
     ref: 'CompanySettings', // Ссылка на модель компании
     required: true,
   },
+  isClosed: {
+    type: Boolean,
+    default: false
+  }
 }, { timestamps: true }); // автоматом добавит createdAt и updatedAt
 
-export const WhatsappChat = mongoose.model('WhatsappChat', WhatsappChatSchema);
+export const WhatsappChat = mongoose.model<IWhatsappChat>('WhatsappChat', WhatsappChatSchema);
+

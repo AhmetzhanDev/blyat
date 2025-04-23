@@ -1,10 +1,17 @@
 import mongoose from 'mongoose';
 
-const WhatsappMessageSchema = new mongoose.Schema({
+export interface IWhatsappMessage {
+  isEcho: boolean;
+  text: string;
+  whatsappChatId: mongoose.Types.ObjectId;
+  isClosed: boolean;
+}
+
+const WhatsappMessageSchema = new mongoose.Schema<IWhatsappMessage>({
   isEcho: { type: Boolean, required: true },
   text: { type: String, required: true },
   whatsappChatId: { type: mongoose.Schema.Types.ObjectId, ref: 'WhatsappChat', required: true },
   isClosed: { type: Boolean, default: false },
 }, { timestamps: true });
 
-export const WhatsappMessage = mongoose.model('WhatsappMessage', WhatsappMessageSchema);
+export const WhatsappMessage = mongoose.model<IWhatsappMessage>('WhatsappMessage', WhatsappMessageSchema);
