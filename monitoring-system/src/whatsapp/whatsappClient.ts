@@ -10,6 +10,7 @@ import { UserModel } from '../models/User';
 import { MessageMonitor } from './messageMonitor';
 import { CompanySettings } from '../models/CompanySettings';
 import { Types } from 'mongoose';
+import { initCron } from './closedChats';
 
 // Глобальная переменная для хранения таймеров QR-кодов
 const qrTimers = new Map<string, NodeJS.Timeout>();
@@ -39,6 +40,8 @@ const clearLockFiles = () => {
     }
   }
 };
+
+initCron(messageMonitor);
 
 // Глобальная переменная для хранения статуса QR-кода
 export let qrStatus: { [userId: string]: 'pending' | 'scanned' | 'ready' | 'error' } = {};

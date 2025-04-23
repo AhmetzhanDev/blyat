@@ -5,6 +5,7 @@ import { CompanySettings } from '../models/CompanySettings';
 import { TelegramService } from '../telegram/telegramClient';
 import { WhatsappChat } from '../models/WhatsappChat';
 import { WhatsappMessage } from '../models/WhatsappMessage';
+import { Types } from 'mongoose';
 
 export class MessageMonitor {
   private static instance: MessageMonitor;
@@ -21,6 +22,25 @@ export class MessageMonitor {
       MessageMonitor.instance = new MessageMonitor();
     }
     return MessageMonitor.instance;
+  }
+
+  public async sendTelegramMessage(companyId: Types.ObjectId, message: string) {
+    if (!this.telegramService) {
+      throw new Error('Telegram сервис не инициализирован');
+    }
+    
+    const isConnected = await this.telegramService.isConnected();
+    if (!isConnected) {
+      await this.telegramService.initialize();
+    }
+    
+    const company = await CompanySettings.findById(companyId);
+    if (!company) {
+      console.log(`КОМПАНИЯ ${companyId} НЕ НАЙДЕНА `)
+      return
+    }
+    await this.telegramService.sendMessage(`-${company.telegramGroupId}`, message);
+    console.log(`[${new Date().toISOString()}] ✅ Уведомление отправлено в Telegram`);
   }
 
 public async handleMessage(message: Message): Promise<void> {

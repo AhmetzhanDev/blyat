@@ -17,6 +17,7 @@
     "@types/qrcode": "^1.5.5",
     "bcrypt": "^5.1.1",
     "bcryptjs": "^3.0.2",
+    "cron": "^4.3.0",
     "dockerode": "^4.0.5",
     "dotenv": "^16.4.1",
     "express": "^4.18.2",

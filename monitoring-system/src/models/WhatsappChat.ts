@@ -4,6 +4,7 @@ export interface IWhatsappChat extends Document {
   chatId: string;
   companyId: mongoose.Types.ObjectId;
   isClosed: boolean;
+  sendMessage: boolean;
 }
 
 const WhatsappChatSchema = new mongoose.Schema<IWhatsappChat>({
@@ -14,10 +15,14 @@ const WhatsappChatSchema = new mongoose.Schema<IWhatsappChat>({
   },
   companyId: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'CompanySettings', // Ссылка на модель компании
+    // ref: 'CompanySettings', // Ссылка на модель компании
     required: true,
   },
   isClosed: {
+    type: Boolean,
+    default: false
+  },
+  sendMessage: {
     type: Boolean,
     default: false
   }
