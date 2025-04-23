@@ -60,6 +60,8 @@ const getNotClosedChats = async () => {
             await WhatsappChat.updateOne({ _id: chat._id }, { sendMessage: true });
         }
     }
+
+    console.log("Закрытие чатов завершено")
 }
 
 
