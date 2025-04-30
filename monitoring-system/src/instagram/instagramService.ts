@@ -158,9 +158,9 @@ export class InstagramService {
                     
                         // Сохраняем сообщение
                         const whatsappMessage = new InstagramMessage({
-                          isEcho: event.message.is_echo,
+                          isEcho: event.message.is_echo || false,
                           text: event.message.text,
-                          whatsappChatId: chat._id,
+                          instagramChatId: chat._id,
                           isClosed: false  // Сделка еще не закрыта
                         });
                     
