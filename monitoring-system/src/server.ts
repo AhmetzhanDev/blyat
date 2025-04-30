@@ -7,6 +7,7 @@ import { Server, Socket } from 'socket.io';
 import authRoutes from './routes/auth';
 import whatsappRoutes from './routes/whatsapp';
 import integrationsRoutes from './routes/integrations';
+import instagramRoutes from './routes/instagram';
 import companyRoutes from './routes/company';
 import { initAdminClient } from './whatsapp/adminClient';
 import morgan from 'morgan';
@@ -42,6 +43,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/whatsapp', whatsappRoutes);
 app.use('/api/integrations', integrationsRoutes);
 app.use('/api/company', companyRoutes);
+app.use('/api/instagram', instagramRoutes);
 
 interface JWTPayload {
   userId: string;

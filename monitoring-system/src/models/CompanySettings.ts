@@ -43,6 +43,18 @@ const companySettingsSchema = new mongoose.Schema({
   isRunning: {
     type: Boolean,
     default: false
+  },
+  messanger: { // whatsapp | instagram
+    type: String,
+    default: 'whatsapp'
+  },
+  accessToken: {
+    type: String,
+    required: false
+  },
+  instagramUserId: {
+    type: String,
+    required: false
   }
 });
 
