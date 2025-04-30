@@ -42,7 +42,7 @@ export class InstagramController {
 
         console.log("GOT ",verifyToken);
         console.log("Ned ",process.env.IG_VERIFY_TOKEN);
-        console.log(challenge)
+        console.log(challenge, verifyToken === process.env.IG_VERIFY_TOKEN)
         if (verifyToken === process.env.IG_VERIFY_TOKEN) {
           return challenge; // Возвращаем challenge для подтверждения
         }
