@@ -7,8 +7,10 @@ dotenv.config()
 const instagramService = new InstagramService()
 
 export class InstagramController {
-    public redirectToInstagramAuth() {
+    public redirectToInstagramAuth(req: Request, res: Response) {
         const instagramAuthUrl = `https://api.instagram.com/oauth/authorize?client_id=${process.env.IG_CLIENT_ID}&redirect_uri=${process.env.IG_REDIRECT_URI}&scope=business_basic,business_manage_messages&response_type=code`;
+
+        res.send({ url: instagramAuthUrl });
         return { url: instagramAuthUrl };
     }
 
@@ -21,12 +23,16 @@ export class InstagramController {
         }
         // Обмен на access_token и сохранение данных пользователя
         const result = await instagramService.exchangeCodeForToken(code);
+
+        res.send(result);
         return result;
     }
 
     public async handleMessageWebhook(req: Request, res: Response) {
         // Обрабатываем полученные сообщения
         await instagramService.handleMessage(req.body);
+
+        res.sendStatus(200).send('Webhook received');
         return 'Webhook received';
       }
 
@@ -44,6 +50,7 @@ export class InstagramController {
         console.log("Ned ",process.env.IG_VERIFY_TOKEN);
         console.log(challenge, verifyToken === process.env.IG_VERIFY_TOKEN)
         if (verifyToken === process.env.IG_VERIFY_TOKEN) {
+          res.send(challenge);
           return challenge; // Возвращаем challenge для подтверждения
         }
         return 'Invalid verification token';
