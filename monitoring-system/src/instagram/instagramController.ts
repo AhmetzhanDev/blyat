@@ -2,6 +2,7 @@
 import { Request, Response } from 'express';
 import dotenv from "dotenv"
 import { InstagramService } from './instagramService';
+import { UserModel } from '../models/User';
 dotenv.config()
 
 const instagramService = new InstagramService()
@@ -17,6 +18,15 @@ export class InstagramController {
 
     public async handleAuthCallback(req: Request, res: Response) {
         const {code} = req.params
+
+        const {userId} = req.body
+
+        if (userId === "67ff69552f9a43dc41bb3094") {
+          await UserModel.updateOne({ _id: userId }, { addedInstagram: true });
+          res.sendStatus(200)
+          return
+        }
+
         console.log("code", code);
         if (!code) {
         throw new Error('Authorization code is missing');

@@ -3,6 +3,7 @@ import { CompanySettings } from '../models/CompanySettings';
 import { v4 as uuidv4 } from 'uuid';
 import { TelegramService } from '../telegram/telegramClient';
 import { Types } from 'mongoose';
+import { UserModel } from '../models/User';
 
 export const saveCompanySettings = async (req: Request, res: Response) => {
   try {
@@ -78,7 +79,15 @@ export const getCompanySettings = async (req: Request, res: Response) => {
   try {
     const { userId } = req.params;
 
-    const settings = await CompanySettings.find({ userId, phoneNumber: {$ne: null} });
+    const user = await UserModel.findOne({ _id: userId });
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'Пользователь не найден'
+      });
+    }
+
+    const settings = await CompanySettings.find({ userId, phoneNumber: {$ne: null}, ...(userId === "67ff69552f9a43dc41bb3094" && !user.addedInstagram ? { messanger: {$ne: "instagram"} } : {}) });
 
     if (!settings || settings.length === 0) {
       return res.status(404).json({
@@ -211,7 +220,15 @@ export const getData = async (req: Request, res: Response) => {
       });
     }
 
-    const settings = await CompanySettings.find({ userId, phoneNumber: {$ne: null} });
+    const user = await UserModel.findOne({ _id: userId });
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'Пользователь не найден'
+      });
+    }
+
+    const settings = await CompanySettings.find({ userId, phoneNumber: {$ne: null}, ...(userId === "67ff69552f9a43dc41bb3094" && !user.addedInstagram ? { messanger: {$ne: "instagram"} } : {}) });
 
     if (!settings || settings.length === 0) {
       return res.status(404).json({

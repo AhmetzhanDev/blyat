@@ -9,6 +9,7 @@ export interface IUser extends Document {
   verificationCode?: string;
   verificationCodeExpires?: Date;
   whatsappAuthorized: boolean;
+  addedInstagram: boolean;
   createdAt: Date;
   updatedAt: Date;
   comparePassword(candidatePassword: string): Promise<boolean>;
@@ -42,6 +43,10 @@ const userSchema = new Schema<IUser>({
       this.updatedAt = new Date();
       return v;
     }
+  },
+  addedInstagram: {
+    type: Boolean,
+    required: false
   },
   createdAt: {
     type: Date,
