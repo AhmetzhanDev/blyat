@@ -14,7 +14,7 @@ router.get('/webhook', instagramController.handleVerifyWebhook);
 router.post('/webhook', instagramController.handleMessageWebhook); // Для получения сообщений
 
 router.get('/url', instagramController.redirectToInstagramAuth); // Ссылка на авторизацию
-router.get('/callback', instagramController.handleAuthCallback); // Для входа в аккаунт
+router.post('/callback', instagramController.handleAuthCallback); // Для входа в аккаунт
 
 
 
