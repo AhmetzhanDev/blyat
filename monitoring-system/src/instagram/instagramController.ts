@@ -32,7 +32,7 @@ export class InstagramController {
         // Обрабатываем полученные сообщения
         await instagramService.handleMessage(req.body);
 
-        res.sendStatus(200).send('Webhook received');
+        // res.sendStatus(200).send('Webhook received');
         return 'Webhook received';
       }
 
