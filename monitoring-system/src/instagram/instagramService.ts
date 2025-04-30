@@ -206,7 +206,7 @@ export class InstagramService {
                           
                           if (company.telegramGroupId) {
                             try {
-                              const reminderMessage = `⚠️ ВНИМАНИЕ! ⚠️\n\nВ Instagram-чате @${chat.userName} (${chat.name}) не ответили на сообщение в течение ${company.managerResponse} минут!\n\n`;
+                              const reminderMessage = `⚠️ ВНИМАНИЕ! ⚠️\n\nВ Instagram-чате не ответили на сообщение в течение ${company.managerResponse} минут!\n\nЧат: @${chat.userName} (${chat.name})`;
                               
                               if (!this.telegramService) {
                                 throw new Error('Telegram сервис не инициализирован');
