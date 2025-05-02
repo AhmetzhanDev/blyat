@@ -147,8 +147,8 @@ export const updateCompanySettings = async (req: Request, res: Response) => {
         message: 'Настройки пользователя не найдены'
       });
     }
-
     if (!settings.telegramInviteLink) {
+      console.log("stfu")
       const telegramService = TelegramService.getInstance();
       await telegramService.initialize();
       await telegramService.createGroupsForCompanies([settings]);
@@ -258,7 +258,7 @@ export const getTelegramLink = async (req: Request, res: Response) => {
     if (!settings) {
       return res.status(404).json({ success: false, message: 'Настройки не найдены' });
     }
-    console.log(settings.telegramInviteLink)
+    console.log( "TELEGRAMMAMAMAMMAM" , settings)
     res.status(200).json({ success: true, telegramInviteLink: settings.telegramInviteLink });
   } catch (error) {
     res.status(500).json({ success: false, message: 'Ошибка сервера' });
