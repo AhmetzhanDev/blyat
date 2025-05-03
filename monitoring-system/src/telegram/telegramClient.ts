@@ -76,6 +76,8 @@ export class TelegramService {
   }
 
   private waitForVerificationCode(): Promise<string> {
+      console.log('=== Вызов phoneCode ===')
+			console.log('Ожидаем код подтверждения...')
     if (!this.codePromise) {
       this.codePromise = new Promise((resolve) => {
         this.codeResolve = resolve;
