@@ -39,10 +39,21 @@ export class MessageMonitor {
 			console.log(`КОМПАНИЯ ${companyId} НЕ НАЙДЕНА `)
 			return
 		}
-		await this.telegramService.sendMessage(
-			`-${company.telegramGroupId}`,
-			message
-		)
+
+		if (!company.telegramGroupId) {
+			console.log(`У компании ${companyId} не указан telegramGroupId`)
+			return
+		}
+
+		// Проверяем формат telegramGroupId
+		let groupId = company.telegramGroupId.toString()
+		if (!groupId.startsWith('-')) {
+			groupId = `-${groupId}`
+		}
+
+		console.log(`Отправка сообщения в группу с ID: ${groupId}`)
+
+		await this.telegramService.sendMessage(groupId, message)
 		console.log(
 			`[${new Date().toISOString()}] ✅ Уведомление отправлено в Telegram`
 		)

@@ -472,8 +472,16 @@ export class TelegramService {
 				throw new Error('ID группы не может быть пустым')
 			}
 
+			// Проверяем формат groupId
+			if (!groupId.startsWith('-')) {
+				groupId = `-${groupId}`
+			}
+
 			console.log(
 				`[${new Date().toISOString()}] 🔍 Отправка сообщения в группу: ${groupId}`
+			)
+			console.log(
+				`[${new Date().toISOString()}] 🔍 Текст сообщения: ${message}`
 			)
 
 			const response = await fetch(
@@ -486,12 +494,16 @@ export class TelegramService {
 					body: JSON.stringify({
 						chat_id: groupId,
 						text: message,
-						parse_mode: 'HTML',
+						parse_mode: 'HTML', // Меняем на HTML для лучшей совместимости
 					}),
 				}
 			)
 
 			const result = await response.json()
+			console.log(
+				`[${new Date().toISOString()}] 📝 Ответ от Telegram API:`,
+				JSON.stringify(result, null, 2)
+			)
 
 			if (!result.ok) {
 				console.error(

@@ -16,6 +16,10 @@ import { TelegramService } from './telegram/telegramClient'
 import { initWhatsappClients } from './whatsapp/whatsappClient'
 import { CompanySettings } from './models/CompanySettings'
 
+import { initCron } from './whatsapp/closedChats'
+import { initDailyReportCron } from './whatsapp/dailyReport'
+import { MessageMonitor } from './whatsapp/messageMonitor'
+
 dotenv.config()
 const app = express()
 const httpServer = createServer(app)
@@ -128,7 +132,16 @@ httpServer.listen(PORT, async () => {
 		console.log('Telegram клиент успешно авторизован')
 
 		console.log('Инициализация WhatsApp клиентов...')
-		initWhatsappClients(io)
+		await initWhatsappClients(io)
+
+		// Получаем экземпляр MessageMonitor
+		const messageMonitor = MessageMonitor.getInstance()
+
+		// Инициализируем крон для закрытия чатов
+		initCron(messageMonitor)
+
+		// Инициализируем крон для ежедневного отчета
+		initDailyReportCron(messageMonitor)
 	} catch (error) {
 		console.error('Ошибка при инициализации клиентов:', error)
 	}
