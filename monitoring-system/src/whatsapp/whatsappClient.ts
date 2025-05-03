@@ -128,22 +128,14 @@ export const generateUserQR = async (userId: string, io: any, companyId: string)
     const settings = await CompanySettings.findOne({ userId, _id: new Types.ObjectId(companyId), whatsappAuthorized: true, isRunning: true });
 
     if (settings) {
-      // const socketId = getSocketIdByUserId(io, userId);
-
-      // Отправляем событие только этому пользователю
-      // if (socketId) {
-        io.emit(`user:${userId}:ready`, {
-          status: 'ready',
-          message: 'WhatsApp клиент готов к работе',
-          timestamp: new Date().toISOString(),
-          whatsappAuthorized: true,
-          companyId
-        });
-      // } else {
-      //   console.error('[QR-DEBUG] Не найден socketId для userId:', userId);
-      // }
-
-      return
+      io.emit(`user:${userId}:ready`, {
+        status: 'ready',
+        message: 'WhatsApp клиент готов к работе',
+        timestamp: new Date().toISOString(),
+        whatsappAuthorized: true,
+        companyId
+      });
+      return;
     }
 
     try {
@@ -155,6 +147,22 @@ export const generateUserQR = async (userId: string, io: any, companyId: string)
       
       const client = getOrCreateClient(companyId);
 
+      // Clear any existing QR timer for this user
+      if (qrTimers.has(userId)) {
+        clearTimeout(qrTimers.get(userId));
+        qrTimers.delete(userId);
+      }
+
+      // Set a longer timeout (5 minutes instead of default)
+      const qrTimeout = setTimeout(() => {
+        console.log('[QR-DEBUG] QR код устарел. Перезапуск клиента...');
+        client.destroy().then(() => {
+          emitQRStatus(userId, 'error', 'QR код устарел. Пожалуйста, обновите страницу для получения нового кода.', io);
+        });
+      }, 300000); // 5 minutes in milliseconds
+
+      qrTimers.set(userId, qrTimeout);
+
       await CompanySettings.findOneAndUpdate(
         {
           userId,
@@ -165,7 +173,7 @@ export const generateUserQR = async (userId: string, io: any, companyId: string)
       );
 
       qrStatus[userId] = 'pending';
-      emitQRStatus(userId, 'pending', 'Генерация QR-кода', io);
+      emitQRStatus(userId, 'pending', 'Генерация QR-кода. У вас есть 5 минут на сканирование. QR-код будет обновляться каждые 20-30 секунд.', io);
       
       // Добавляем обработчик события 'qr' до инициализации
       const qrHandler = async (qr: string) => {
@@ -191,7 +199,7 @@ export const generateUserQR = async (userId: string, io: any, companyId: string)
           const qrCode = await qrcode.toDataURL(qr, {
             type: 'image/png',
             margin: 1,
-            width: 200,
+            width: 300, // Increased size for better scanning
             color: {
               dark: '#000000',
               light: '#ffffff'
@@ -200,11 +208,12 @@ export const generateUserQR = async (userId: string, io: any, companyId: string)
           
           console.log('[QR-DEBUG] QR-код сгенерирован, длина:', qrCode.length);
           
-          // Отправляем QR-код через WebSocket
+          // Отправляем QR-код через WebSocket с информацией об обновлении
           try {
             console.log('[QR-DEBUG] Попытка отправки QR-кода через WebSocket');
             io.emit(`user:qr:${userId}`, { 
               qr: qrCode,
+              message: 'Новый QR-код сгенерирован. У вас есть 20-30 секунд до следующего обновления.',
               timestamp: new Date().toISOString()
             });
             console.log('[QR-DEBUG] QR-код успешно отправлен через WebSocket');
@@ -213,10 +222,10 @@ export const generateUserQR = async (userId: string, io: any, companyId: string)
             throw error;
           }
 
-          resolve({client, qr: qrCode});
+          return {client, qr: qrCode};
         } catch (err) {
           console.error('[QR-DEBUG] Ошибка при генерации QR-кода:', err);
-          reject(err);
+          throw err;
         }
       };
 

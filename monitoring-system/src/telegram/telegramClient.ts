@@ -83,33 +83,54 @@ export class TelegramService {
         this.codeResolve = resolve;
       });
     }
+    console.log("BOOOM")
     return this.codePromise;
   }
 
   public async initialize(): Promise<void> {
     if (!this.client) {
-      this.client = new TelegramClient(
-        this.stringSession,
-        Number(process.env.TELEGRAM_API_ID),
-        process.env.TELEGRAM_API_HASH!,
-        { connectionRetries: 5 }
-      );
+      try {
+        this.client = new TelegramClient(
+          this.stringSession,
+          Number(process.env.TELEGRAM_API_ID),
+          process.env.TELEGRAM_API_HASH!,
+          { connectionRetries: 5 }
+        );
 
-      await this.client.start({
-        phoneNumber: this.phone,
-        phoneCode: async () => {
-          console.log('\n=== ОЖИДАНИЕ КОДА ПОДТВЕРЖДЕНИЯ TELEGRAM ===');
-          console.log('Пожалуйста, отправьте код подтверждения на номер WhatsApp админа');
-          console.log(`Номер WhatsApp админа: ${this.phone}`);
-          const code = await this.waitForVerificationCode();
-          console.log('Получен код подтверждения');
-          console.log('========================\n');
-          return code;
-        },
-        onError: (err) => console.error('Ошибка Telegram:', err),
-      });
+        await this.client.start({
+          phoneNumber: this.phone,
+          phoneCode: async () => {
+            console.log('\n=== ОЖИДАНИЕ КОДА ПОДТВЕРЖДЕНИЯ TELEGRAM ===');
+            console.log('Пожалуйста, отправьте код подтверждения на номер WhatsApp админа');
+            console.log(`Номер WhatsApp админа: ${this.phone}`);
+            const code = await this.waitForVerificationCode();
+            console.log('Получен код подтверждения');
+            console.log('========================\n');
+            return code;
+          },
+          onError: (err) => {
+            if (err.message.includes('FloodWaitError')) {
+              const matches = err.message.match(/\d+/);
+              const waitSeconds = matches ? parseInt(matches[0]) : 0;
+              const waitMinutes = Math.ceil(waitSeconds / 60);
+              const waitHours = Math.ceil(waitSeconds / 3600);
+              console.error(`Слишком много попыток. Необходимо подождать:\n${waitSeconds} секунд\n${waitMinutes} минут\n${waitHours} часов`);
+            }
+            console.error('Ошибка Telegram:', err);
+          },
+        });
 
-      this.saveSession();
+        this.saveSession();
+      } catch (error: any) {
+        if (error.message.includes('FloodWaitError')) {
+          const matches = error.message.match(/\d+/);
+          const waitSeconds = matches ? parseInt(matches[0]) : 0;
+          const waitMinutes = Math.ceil(waitSeconds / 60);
+          const waitHours = Math.ceil(waitSeconds / 3600);
+          throw new Error(`Превышен лимит попыток авторизации. Пожалуйста, подождите:\n${waitSeconds} секунд\n${waitMinutes} минут\n${waitHours} часов`);
+        }
+        throw error;
+      }
     }
   }
 
@@ -161,6 +182,19 @@ export class TelegramService {
           console.log(`[${new Date().toISOString()}] 🔍 Получен ID группы: ${comp.telegramGroupId}`);
 
           try {
+            // Generate invite link first
+            console.log(`[${new Date().toISOString()}] 🔍 Генерация ссылки-приглашения для группы...`);
+            const inviteLink = await this.client.invoke(new Api.messages.ExportChatInvite({
+              peer: new Api.InputPeerChat({ chatId: bigInt(comp.telegramGroupId) })
+            }));
+
+            if (!inviteLink || !('link' in inviteLink)) {
+              throw new Error('Не удалось получить ссылку-приглашение');
+            }
+
+            comp.telegramInviteLink = inviteLink.link;
+            console.log(`[${new Date().toISOString()}] ✅ Ссылка-приглашение создана: ${comp.telegramInviteLink}`);
+
             const botUsername = process.env.TELEGRAM_BOT_USERNAME;
             if (!botUsername) {
               throw new Error('Username бота не найден в .env');
@@ -233,30 +267,51 @@ export class TelegramService {
               console.warn(`[${new Date().toISOString()}] ⚠️ Ошибка при отправке приветственного сообщения:`, error);
             }
 
-            const inviteLink = await this.client.invoke(new Api.messages.ExportChatInvite({
-              peer: new Api.InputPeerChat({ chatId: bigInt(comp.telegramGroupId) })
-            }));
-
-            if (!inviteLink || !('link' in inviteLink)) {
-              throw new Error('Не удалось получить ссылку-приглашение');
+            // Save to database with retry
+            let retryCount = 0;
+            const maxRetries = 3;
+            
+            while (retryCount < maxRetries) {
+              try {
+                console.log(`[${new Date().toISOString()}] 💾 Сохранение данных группы в базу данных...`);
+                await CompanySettings.updateOne(
+                  { '_id': comp._id },
+                  {
+                    $set: {
+                      'telegramGroupId': comp.telegramGroupId,
+                      'telegramInviteLink': comp.telegramInviteLink
+                    }
+                  }
+                );
+                console.log(`[${new Date().toISOString()}] ✅ Данные группы успешно сохранены в базу данных`);
+                break;
+              } catch (dbError) {
+                retryCount++;
+                console.error(`[${new Date().toISOString()}] ❌ Попытка ${retryCount}/${maxRetries} сохранения в базу данных не удалась:`, dbError);
+                if (retryCount === maxRetries) {
+                  throw new Error(`Не удалось сохранить данные группы после ${maxRetries} попыток`);
+                }
+                // Wait before retry
+                await new Promise(resolve => setTimeout(resolve, 1000 * retryCount));
+              }
             }
 
-            comp.telegramInviteLink = inviteLink.link;
-
-            console.log(comp._id)
-            await CompanySettings.updateOne(
-              { '_id': comp._id },
-              {
-                $set: {
-                  'telegramGroupId': comp.telegramGroupId,
-                  'telegramInviteLink': comp.telegramInviteLink
-                }
+            console.log(`[${new Date().toISOString()}] ✅ Группа создана и настроена для компании ${comp.nameCompany}`);
+          } catch (error) {
+            console.error(`[${new Date().toISOString()}] ❌ Ошибка при настройке группы для компании ${comp.nameCompany}:`, error);
+            // Clean up if needed
+            if (comp.telegramGroupId && !comp.telegramInviteLink) {
+              console.log(`[${new Date().toISOString()}] 🧹 Очистка данных группы из-за ошибки...`);
+              try {
+                await CompanySettings.updateOne(
+                  { '_id': comp._id },
+                  { $unset: { 'telegramGroupId': 1, 'telegramInviteLink': 1 } }
+                );
+              } catch (cleanupError) {
+                console.error(`[${new Date().toISOString()}] ❌ Ошибка при очистке данных:`, cleanupError);
               }
-            );
-
-            console.log(`Создана группа и получена ссылка-приглашение для компании ${comp.nameCompany}`);
-          } catch (botError) {
-            console.error(`Ошибка при добавлении бота в группу ${comp.nameCompany}:`, botError);
+            }
+            throw error;
           }
         }
       } catch (error) {

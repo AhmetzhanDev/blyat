@@ -20,20 +20,19 @@ dotenv.config()
 const app = express()
 const httpServer = createServer(app)
 const io = new Server(httpServer, {
-	path: '/ws',
-	cors: {
-		origin: ['https://app.salestrack.kz', 'https://app.salestrack.kz'],
-		methods: ['GET', 'POST'],
-	},
-})
+  path: "/ws",
+  cors: {
+    origin: ['https://app.salestrack.kz', 'https://app.salestrack.kz'],
+    methods: ['GET', 'POST']
+  }
+});
 
 // Настройки CORS
-app.use(
-	cors({
-		origin: ['https://app.salestrack.kz', 'https://app.salestrack.kz'],
-		credentials: true,
-	})
-)
+app.use(cors({
+  origin: ['https://app.salestrack.kz', 'https://app.salestrack.kz'],
+  credentials: true
+}));
+
 
 // Логирование всех запросов
 app.use(morgan('dev'))
