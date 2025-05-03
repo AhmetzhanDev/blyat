@@ -1,13 +1,18 @@
 {
-    "compilerOptions": {
-      "target": "ES6",
-      "module": "CommonJS",
-      "outDir": "./dist",
-      "rootDir": "./src",
-      "strict": true,
-      "esModuleInterop": true,
-      "experimentalDecorators": true,
-      "emitDecoratorMetadata": true,
-      "strictPropertyInitialization": false
-    }
-  }
+	"compilerOptions": {
+		"target": "ES6",
+		"module": "CommonJS",
+		"outDir": "./monitoring-system/dist",
+		"rootDir": "./monitoring-system/src",
+		"strict": true,
+		"esModuleInterop": true,
+		"experimentalDecorators": true,
+		"emitDecoratorMetadata": true,
+		"strictPropertyInitialization": false,
+		"moduleResolution": "node",
+		"resolveJsonModule": true,
+		"skipLibCheck": true
+	},
+	"include": ["monitoring-system/src/**/*"],
+	"exclude": ["node_modules", "monitoring-system/dist"]
+}

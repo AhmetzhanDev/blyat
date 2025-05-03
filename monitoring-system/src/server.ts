@@ -22,7 +22,7 @@ const httpServer = createServer(app)
 const io = new Server(httpServer, {
 	path: '/ws',
 	cors: {
-		origin: ['https://app.salestrack.kz', 'https://app.salestrack.kz'],
+		origin: ['http://localhost:3000', 'http://localhost:3000'],
 		methods: ['GET', 'POST'],
 	},
 })
@@ -30,7 +30,7 @@ const io = new Server(httpServer, {
 // Настройки CORS
 app.use(
 	cors({
-		origin: ['https://app.salestrack.kz', 'https://app.salestrack.kz'],
+		origin: ['http://localhost:3000', 'http://localhost:3000'],
 		credentials: true,
 	})
 )
@@ -47,7 +47,6 @@ app.use('/api/company', companyRoutes)
 app.use('/api/instagram', instagramRoutes)
 
 interface JWTPayload {
-	z
 	userId: string
 }
 
