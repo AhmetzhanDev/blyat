@@ -34,6 +34,7 @@ export class TelegramService {
 	private sessionFile = path.join(__dirname, 'telegram_session.txt')
 	private codePromise: Promise<string> | null = null
 	private codeResolve: ((code: string) => void) | null = null
+	private isInitialized = false
 
 	private constructor() {
 		this.phone = process.env.TELEGRAM_PHONE || ''
@@ -88,55 +89,71 @@ export class TelegramService {
 	}
 
 	public async initialize(): Promise<void> {
-		if (!this.client) {
-			try {
-				this.client = new TelegramClient(
-					this.stringSession,
-					Number(process.env.TELEGRAM_API_ID),
-					process.env.TELEGRAM_API_HASH!,
-					{ connectionRetries: 5 }
-				)
+		console.log(
+			`[${new Date().toISOString()}] 🔄 Начало инициализации TelegramService`
+		)
 
+		if (this.isInitialized) {
+			console.log(
+				`[${new Date().toISOString()}] ℹ️ TelegramService уже инициализирован`
+			)
+			return
+		}
+
+		try {
+			const apiId = parseInt(process.env.TELEGRAM_API_ID || '')
+			const apiHash = process.env.TELEGRAM_API_HASH || ''
+			const phone = process.env.TELEGRAM_PHONE || ''
+
+			if (!apiId || !apiHash || !phone) {
+				throw new Error(
+					'TELEGRAM_API_ID, TELEGRAM_API_HASH или TELEGRAM_PHONE не установлены'
+				)
+			}
+
+			console.log(`[${new Date().toISOString()}] 🔄 Создание Telegram клиента`)
+			this.client = new TelegramClient(this.stringSession, apiId, apiHash, {
+				connectionRetries: 5,
+			})
+
+			console.log(`[${new Date().toISOString()}] 🔄 Подключение к Telegram`)
+			await this.client.connect()
+
+			if (!(await this.client.isUserAuthorized())) {
+				console.log(
+					`[${new Date().toISOString()}] 🔄 Начало процесса авторизации`
+				)
 				await this.client.start({
-					phoneNumber: this.phone,
+					phoneNumber: phone,
 					phoneCode: async () => {
-						console.log('\n=== ОЖИДАНИЕ КОДА ПОДТВЕРЖДЕНИЯ TELEGRAM ===')
 						console.log(
-							'Пожалуйста, отправьте код подтверждения на номер WhatsApp админа'
+							`[${new Date().toISOString()}] 📱 Ожидание кода подтверждения...`
 						)
-						console.log(`Номер WhatsApp админа: ${this.phone}`)
 						const code = await this.waitForVerificationCode()
-						console.log('Получен код подтверждения')
-						console.log('========================\n')
+						console.log(`[${new Date().toISOString()}] ✅ Код получен`)
 						return code
 					},
 					onError: err => {
-						if (err.message.includes('FloodWaitError')) {
-							const matches = err.message.match(/\d+/)
-							const waitSeconds = matches ? parseInt(matches[0]) : 0
-							const waitMinutes = Math.ceil(waitSeconds / 60)
-							const waitHours = Math.ceil(waitSeconds / 3600)
-							console.error(
-								`Слишком много попыток. Необходимо подождать:\n${waitSeconds} секунд\n${waitMinutes} минут\n${waitHours} часов`
-							)
-						}
-						console.error('Ошибка Telegram:', err)
+						console.error(
+							`[${new Date().toISOString()}] ❌ Ошибка авторизации:`,
+							err
+						)
+						throw err
 					},
 				})
-
 				this.saveSession()
-			} catch (error: any) {
-				if (error.message.includes('FloodWaitError')) {
-					const matches = error.message.match(/\d+/)
-					const waitSeconds = matches ? parseInt(matches[0]) : 0
-					const waitMinutes = Math.ceil(waitSeconds / 60)
-					const waitHours = Math.ceil(waitSeconds / 3600)
-					throw new Error(
-						`Превышен лимит попыток авторизации. Пожалуйста, подождите:\n${waitSeconds} секунд\n${waitMinutes} минут\n${waitHours} часов`
-					)
-				}
-				throw error
 			}
+
+			this.isInitialized = true
+			console.log(
+				`[${new Date().toISOString()}] ✅ TelegramService успешно инициализирован и авторизован`
+			)
+		} catch (error) {
+			console.error(
+				`[${new Date().toISOString()}] ❌ Ошибка инициализации TelegramService:`,
+				error
+			)
+			throw error
 		}
 	}
 
@@ -534,28 +551,24 @@ export class TelegramService {
 	}
 
 	public async isConnected(): Promise<boolean> {
+		if (!this.client) {
+			console.log(
+				`[${new Date().toISOString()}] ⚠️ Telegram клиент не инициализирован`
+			)
+			return false
+		}
+
 		try {
-			if (!this.client) {
-				console.log('[Telegram] Клиент не инициализирован')
-				return false
-			}
-
-			const isAuthorized = await this.client.isUserAuthorized()
-			console.log(`[Telegram] Пользователь авторизован: ${isAuthorized}`)
-
-			if (!isAuthorized) {
-				console.log(
-					'[Telegram] Пользователь не авторизован, требуется код подтверждения'
-				)
-				return false
-			}
-
-			// Проверяем, что мы можем получить информацию о пользователе
-			await this.client.getMe()
-			console.log('[Telegram] Успешно получена информация о пользователе')
-			return true
+			const isConnected = await this.client.isUserAuthorized()
+			console.log(
+				`[${new Date().toISOString()}] ℹ️ Статус подключения Telegram: ${isConnected}`
+			)
+			return isConnected
 		} catch (error) {
-			console.error('[Telegram] Ошибка при проверке подключения:', error)
+			console.error(
+				`[${new Date().toISOString()}] ❌ Ошибка проверки подключения Telegram:`,
+				error
+			)
 			return false
 		}
 	}

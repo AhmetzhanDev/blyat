@@ -6,14 +6,44 @@ import { CronJob } from 'cron/dist'
 
 // Время для ежедневного отчета
 export const initDailyReportCron = (messageMonitor: MessageMonitor) => {
-	new CronJob('45 19 * * *', async () => {
+	console.log(
+		`[${new Date().toISOString()}] 🚀 Инициализация крон-задачи для ежедневного отчета`
+	)
+
+	// Запускаем в 20:05 по алматинскому времени (14:05 UTC)
+	new CronJob('09 14 * * *', async () => {
 		console.log(
-			`[${new Date().toISOString()}] 🕕 Запуск ежедневного отчета в 18:00`
+			`[${new Date().toISOString()}] 🕕 Запуск ежедневного отчета в 20:05 (Алматы)`
 		)
-		await sendDailyReport(messageMonitor)
+		try {
+			await sendDailyReport(messageMonitor)
+			console.log(`[${new Date().toISOString()}] ✅ Отчет успешно отправлен`)
+		} catch (error) {
+			console.error(
+				`[${new Date().toISOString()}] ❌ Ошибка при отправке отчета:`,
+				error
+			)
+		}
 	}).start()
 
-	console.log('Крон для ежедневного отчета инициализирован')
+	// Тестовый запуск для проверки
+	console.log(`[${new Date().toISOString()}] 🔄 Тестовый запуск отчета...`)
+	sendDailyReport(messageMonitor)
+		.then(() =>
+			console.log(
+				`[${new Date().toISOString()}] ✅ Тестовый отчет успешно отправлен`
+			)
+		)
+		.catch(error =>
+			console.error(
+				`[${new Date().toISOString()}] ❌ Ошибка при отправке тестового отчета:`,
+				error
+			)
+		)
+
+	console.log(
+		`[${new Date().toISOString()}] ✅ Крон для ежедневного отчета инициализирован (20:05 Алматы)`
+	)
 }
 
 const sendDailyReport = async (messageMonitor: MessageMonitor) => {

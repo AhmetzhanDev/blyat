@@ -19,6 +19,7 @@ import { CompanySettings } from './models/CompanySettings'
 import { initCron } from './whatsapp/closedChats'
 import { initDailyReportCron } from './whatsapp/dailyReport'
 import { MessageMonitor } from './whatsapp/messageMonitor'
+import './checkEnv'
 
 dotenv.config()
 const app = express()
@@ -91,58 +92,152 @@ export { io }
 
 // Инициализируем подключение к MongoDB
 mongoose
-	.connect(process.env.MONGO_URI!)
+	.connect(process.env.MONGO_URI!, {
+		serverSelectionTimeoutMS: 5000, // 5 секунд таймаут для выбора сервера
+		socketTimeoutMS: 45000, // 45 секунд таймаут для сокета
+		connectTimeoutMS: 10000, // 10 секунд таймаут для подключения
+		maxPoolSize: 10, // максимальное количество соединений в пуле
+		minPoolSize: 5, // минимальное количество соединений в пуле
+		retryWrites: true, // повторные попытки записи
+		retryReads: true, // повторные попытки чтения
+		w: 'majority', // подтверждение записи большинством
+	})
 	.then(() => {
-		console.log('Подключено к MongoDB')
+		console.log(`[${new Date().toISOString()}] ✅ Подключено к MongoDB`)
 	})
 	.catch(err => {
-		console.error('Ошибка подключения к MongoDB:', err)
+		console.error(
+			`[${new Date().toISOString()}] ❌ Ошибка подключения к MongoDB:`,
+			err
+		)
+		process.exit(1)
 	})
+
+// Добавляем обработчики событий MongoDB
+mongoose.connection.on('connecting', () => {
+	console.log(`[${new Date().toISOString()}] 🔄 Подключение к MongoDB...`)
+})
+
+mongoose.connection.on('connected', () => {
+	console.log(`[${new Date().toISOString()}] ✅ Успешно подключено к MongoDB`)
+})
+
+mongoose.connection.on('error', err => {
+	console.error(`[${new Date().toISOString()}] ❌ Ошибка MongoDB:`, err)
+})
+
+mongoose.connection.on('disconnected', () => {
+	console.log(`[${new Date().toISOString()}] ⚠️ Отключено от MongoDB`)
+})
 
 const PORT = process.env.PORT || 3001
 httpServer.listen(PORT, async () => {
-	console.log(`Сервер запущен на порту ${PORT}`)
-	console.log(`API доступен по адресу: http://api.salestrack.kz${PORT}/api`)
-
-	await CompanySettings.updateMany(
-		{},
-		{ $set: { isRunning: false } },
-		{ new: true }
+	console.log(
+		`[${new Date().toISOString()}] 🚀 Сервер запущен на порту ${PORT}`
+	)
+	console.log(
+		`[${new Date().toISOString()}] 🌐 API доступен по адресу: http://api.salestrack.kz${PORT}/api`
 	)
 
 	try {
+		// Ждем подключения к MongoDB
+		if (mongoose.connection.readyState !== 1) {
+			console.log(
+				`[${new Date().toISOString()}] ⏳ Ожидание подключения к MongoDB...`
+			)
+			await new Promise((resolve, reject) => {
+				const timeout = setTimeout(() => {
+					reject(new Error('Таймаут подключения к MongoDB'))
+				}, 10000) // 10 секунд таймаут
+
+				mongoose.connection.once('connected', () => {
+					clearTimeout(timeout)
+					resolve(true)
+				})
+
+				mongoose.connection.once('error', err => {
+					clearTimeout(timeout)
+					reject(err)
+				})
+			})
+		}
+
+		console.log(
+			`[${new Date().toISOString()}] 📊 Статус MongoDB: ${
+				mongoose.connection.readyState
+			}`
+		)
+
+		await CompanySettings.updateMany(
+			{},
+			{ $set: { isRunning: false } },
+			{ new: true }
+		)
+
 		// Инициализируем админский клиент WhatsApp
-		console.log('Инициализация WhatsApp админского клиента...')
+		console.log(
+			`[${new Date().toISOString()}] 🔄 Инициализация WhatsApp админского клиента...`
+		)
 		await initAdminClient()
-		console.log('Админский клиент WhatsApp готов к использованию')
+		console.log(
+			`[${new Date().toISOString()}] ✅ Админский клиент WhatsApp готов к использованию`
+		)
 
 		// Инициализируем Telegram клиент
 		const telegramService = TelegramService.getInstance()
-		console.log('Инициализация Telegram клиента...')
+		console.log(
+			`[${new Date().toISOString()}] 🔄 Инициализация Telegram клиента...`
+		)
 		await telegramService.initialize()
 
 		// Проверяем авторизацию Telegram
 		const isTelegramAuthorized = await telegramService.isConnected()
 		if (!isTelegramAuthorized) {
 			console.log(
-				'Telegram клиент не авторизован. Ожидание кода подтверждения...'
+				`[${new Date().toISOString()}] ⚠️ Telegram клиент не авторизован. Ожидание кода подтверждения...`
 			)
 			return
 		}
-		console.log('Telegram клиент успешно авторизован')
+		console.log(
+			`[${new Date().toISOString()}] ✅ Telegram клиент успешно авторизован`
+		)
 
-		console.log('Инициализация WhatsApp клиентов...')
+		console.log(
+			`[${new Date().toISOString()}] 🔄 Инициализация WhatsApp клиентов...`
+		)
 		await initWhatsappClients(io)
 
 		// Получаем экземпляр MessageMonitor
+		console.log(
+			`[${new Date().toISOString()}] 🔄 Получение экземпляра MessageMonitor...`
+		)
 		const messageMonitor = MessageMonitor.getInstance()
+		console.log(
+			`[${new Date().toISOString()}] ✅ MessageMonitor инициализирован`
+		)
 
 		// Инициализируем крон для закрытия чатов
+		console.log(
+			`[${new Date().toISOString()}] 🔄 Инициализация крон для закрытия чатов...`
+		)
 		initCron(messageMonitor)
+		console.log(
+			`[${new Date().toISOString()}] ✅ Крон для закрытия чатов инициализирован`
+		)
 
 		// Инициализируем крон для ежедневного отчета
+		console.log(
+			`[${new Date().toISOString()}] 🔄 Инициализация крон для ежедневного отчета...`
+		)
 		initDailyReportCron(messageMonitor)
+		console.log(
+			`[${new Date().toISOString()}] ✅ Крон для ежедневного отчета инициализирован`
+		)
 	} catch (error) {
-		console.error('Ошибка при инициализации клиентов:', error)
+		console.error(
+			`[${new Date().toISOString()}] ❌ Ошибка при инициализации клиентов:`,
+			error
+		)
+		process.exit(1)
 	}
 })
