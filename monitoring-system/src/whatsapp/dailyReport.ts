@@ -4,6 +4,8 @@ import { CompanySettings } from '../models/CompanySettings'
 import { MessageMonitor } from './messageMonitor'
 import { CronJob } from 'cron/dist'
 
+
+// Время для ежедневного отчета
 export const initDailyReportCron = (messageMonitor: MessageMonitor) => {
 	new CronJob('44 18 * * *', async () => {
 		console.log(

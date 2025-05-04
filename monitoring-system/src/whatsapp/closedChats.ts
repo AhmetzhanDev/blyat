@@ -6,10 +6,13 @@ import { CompanySettings } from '../models/CompanySettings'
 import { MessageMonitor } from './messageMonitor'
 import { CronJob } from 'cron/dist'
 
+//Получает последние 10 сообщений за последние 24 часа
 export const initCron = (messageMonitor: MessageMonitor) => {
 	new CronJob('49 17 * * *', async () => {
 		await getNotClosedChats()
 	}).start()
+
+	//Отправляет сообщение о не закрытых чатах в группу Telegram компании
 
 	new CronJob('36 18 * * *', async () => {
 		await sendNotClosedChatsMessage(messageMonitor)
