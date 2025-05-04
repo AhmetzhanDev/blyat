@@ -11,7 +11,7 @@ export const initDailyReportCron = (messageMonitor: MessageMonitor) => {
 	)
 
 	// Запускаем в 20:05 по алматинскому времени (14:05 UTC)
-	new CronJob('11 14 * * *', async () => {
+	new CronJob('13 15 * * *', async () => {
 		console.log(
 			`[${new Date().toISOString()}] 🕕 Запуск ежедневного отчета в 20:05 (Алматы)`
 		)
