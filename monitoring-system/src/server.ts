@@ -306,41 +306,6 @@ httpServer.listen(PORT, async () => {
 		console.log(
 			`[${new Date().toISOString()}] ✅ Крон для ежедневного отчета инициализирован`
 		)
-
-		// Тестовый запуск отчета сразу после инициализации
-		console.log(
-			`[${new Date().toISOString()}] 🔄 Тестовый запуск ежедневного отчета...`
-		)
-		try {
-			const companies = await CompanySettings.find({ isRunning: true })
-			console.log(
-				`[${new Date().toISOString()}] 📊 Найдено компаний для тестового отчета: ${
-					companies.length
-				}`
-			)
-
-			for (const company of companies) {
-				console.log(
-					`[${new Date().toISOString()}] 🔍 Тестовая обработка компании: ${
-						company.nameCompany
-					}`
-				)
-				if (company.telegramGroupId) {
-					const report = await messageMonitor.generateDailyReport(company._id)
-					await messageMonitor.sendTelegramMessage(company._id, report)
-					console.log(
-						`[${new Date().toISOString()}] ✅ Тестовый отчет отправлен для компании ${
-							company.nameCompany
-						}`
-					)
-				}
-			}
-		} catch (error) {
-			console.error(
-				`[${new Date().toISOString()}] ❌ Ошибка при тестовом запуске отчета:`,
-				error
-			)
-		}
 	} catch (error) {
 		console.error(
 			`[${new Date().toISOString()}] ❌ Ошибка при инициализации клиентов:`,
