@@ -4,6 +4,7 @@ export interface IWhatsappMessage {
 	isEcho: boolean
 	text: string
 	whatsappChatId: mongoose.Types.ObjectId
+	companyId: mongoose.Types.ObjectId
 	createdAt: Date
 }
 
@@ -14,6 +15,11 @@ const WhatsappMessageSchema = new mongoose.Schema<IWhatsappMessage>(
 		whatsappChatId: {
 			type: mongoose.Schema.Types.ObjectId,
 			// ref: 'WhatsappChat',
+			required: true,
+		},
+		companyId: {
+			type: mongoose.Schema.Types.ObjectId,
+			// ref: 'CompanySettings',
 			required: true,
 		},
 	},

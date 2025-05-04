@@ -144,6 +144,7 @@ export class MessageMonitor {
 				isEcho: message.fromMe,
 				text: message.body,
 				whatsappChatId: chat._id,
+				companyId: company._id,
 				isClosed: false, // Сделка еще не закрыта
 			})
 
@@ -322,6 +323,7 @@ export class MessageMonitor {
 				isEcho: message.fromMe,
 				text: message.body,
 				whatsappChatId: chat._id,
+				companyId: company._id,
 				isClosed: false, // Сделка еще не закрыта
 			})
 
