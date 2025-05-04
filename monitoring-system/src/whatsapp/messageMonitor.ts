@@ -13,13 +13,24 @@ export class MessageMonitor {
 	private telegramService: TelegramService
 
 	private constructor() {
+		console.log(`[${new Date().toISOString()}] 🔄 Инициализация MessageMonitor`)
 		this.activeTimers = new Map()
 		this.telegramService = TelegramService.getInstance()
+		console.log(
+			`[${new Date().toISOString()}] ✅ MessageMonitor инициализирован`
+		)
 	}
 
 	public static getInstance(): MessageMonitor {
 		if (!MessageMonitor.instance) {
+			console.log(
+				`[${new Date().toISOString()}] 🔄 Создание нового экземпляра MessageMonitor`
+			)
 			MessageMonitor.instance = new MessageMonitor()
+		} else {
+			console.log(
+				`[${new Date().toISOString()}] ✅ Использование существующего экземпляра MessageMonitor`
+			)
 		}
 		return MessageMonitor.instance
 	}
@@ -338,5 +349,99 @@ export class MessageMonitor {
 				error
 			)
 		}
+	}
+
+	public async generateDailyReport(companyId: Types.ObjectId): Promise<string> {
+		console.log(
+			`[${new Date().toISOString()}] 🔄 Генерация ежедневного отчета для компании ${companyId}`
+		)
+
+		const company = await CompanySettings.findById(companyId)
+		if (!company) {
+			throw new Error(`Компания с ID ${companyId} не найдена`)
+		}
+
+		// Получаем все чаты за сегодня
+		const today = new Date()
+		today.setHours(0, 0, 0, 0)
+
+		const chats = await WhatsappChat.find({
+			companyId: company._id,
+			createdAt: { $gte: today },
+		})
+
+		// Получаем все сообщения за сегодня
+		const messages = await WhatsappMessage.find({
+			whatsappChatId: { $in: chats.map(chat => chat._id) },
+			createdAt: { $gte: today },
+		})
+
+		// Статистика
+		const startedChats = chats.length
+		const closedChats = chats.filter(chat => chat.isClosed).length
+
+		// Расчет среднего времени ответа
+		const responseTimes: number[] = []
+		for (const chat of chats) {
+			const chatMessages = messages.filter(m =>
+				m.whatsappChatId.equals(chat._id)
+			)
+			for (let i = 0; i < chatMessages.length - 1; i++) {
+				if (!chatMessages[i].isEcho && chatMessages[i + 1].isEcho) {
+					const responseTime =
+						chatMessages[i + 1].createdAt.getTime() -
+						chatMessages[i].createdAt.getTime()
+					responseTimes.push(responseTime)
+				}
+			}
+		}
+
+		const avgResponseTime =
+			responseTimes.length > 0
+				? Math.round(
+						responseTimes.reduce((a, b) => a + b, 0) /
+							responseTimes.length /
+							1000
+				  )
+				: 0
+
+		// Диалоги без ответа (есть сообщения от клиента, но нет ответа менеджера)
+		const unansweredChats = chats.filter(chat => {
+			const chatMessages = messages.filter(m =>
+				m.whatsappChatId.equals(chat._id)
+			)
+			return chatMessages.length > 0 && !chatMessages.some(m => m.isEcho)
+		}).length
+
+		// Просроченные ответы (время ответа больше 2 минут)
+		const overdueResponses = responseTimes.filter(
+			time => time > 2 * 60 * 1000
+		).length
+
+		// Непросмотренные чаты (sendMessage: false)
+		const unviewedChats = chats.filter(chat => !chat.sendMessage)
+
+		// Формируем отчет
+		const report =
+			`📊 <b>Ежедневный отчет от SalesTrack</b>\n\n` +
+			`🗓 <b>Дата:</b> ${new Date().toLocaleDateString()}\n\n` +
+			`🏢 <b>Компания:</b> ${company.nameCompany}\n\n` +
+			`<b>Статистика за сегодня:</b>\n\n` +
+			`✍️ <b>Диалогов начато:</b> ${startedChats}\n` +
+			`✅ <b>Диалогов закрыто:</b> ${closedChats}\n` +
+			`⚡️<b>Среднее время ответа:</b> ${Math.floor(
+				avgResponseTime / 60
+			)} мин. ${avgResponseTime % 60} сек.\n` +
+			`⚠️ <b>Диалогов без ответа:</b> ${unansweredChats}\n` +
+			`🕓 <b>Просроченных ответов (больше 2 мин):</b> ${overdueResponses}\n\n` +
+			`📌 <b>Список непросмотренных чатов:</b>\n\n` +
+			`${unviewedChats.map(chat => `https://wa.me/${chat.chatId}`).join('\n')}`
+
+		console.log(
+			`[${new Date().toISOString()}] ✅ Отчет сгенерирован для компании ${
+				company.nameCompany
+			}`
+		)
+		return report
 	}
 }

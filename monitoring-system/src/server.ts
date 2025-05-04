@@ -15,19 +15,62 @@ import jwt from 'jsonwebtoken'
 import { TelegramService } from './telegram/telegramClient'
 import { initWhatsappClients } from './whatsapp/whatsappClient'
 import { CompanySettings } from './models/CompanySettings'
-
 import { initCron } from './whatsapp/closedChats'
 import { initDailyReportCron } from './whatsapp/dailyReport'
 import { MessageMonitor } from './whatsapp/messageMonitor'
 import './checkEnv'
+import path from 'path'
+import fs from 'fs'
 
+// Проверяем наличие и загрузку .env файла
+const envPath = path.join(__dirname, '../../.env')
+console.log(
+	`[${new Date().toISOString()}] 🔍 Проверка .env файла по пути: ${envPath}`
+)
+
+if (fs.existsSync(envPath)) {
+	console.log(`[${new Date().toISOString()}] ✅ .env файл найден`)
+	const envContent = fs.readFileSync(envPath, 'utf8')
+	console.log(
+		`[${new Date().toISOString()}] 📝 Содержимое .env файла:`,
+		envContent
+	)
+} else {
+	console.error(
+		`[${new Date().toISOString()}] ❌ .env файл не найден по пути: ${envPath}`
+	)
+}
+
+// Загружаем переменные окружения
 dotenv.config()
+
+// Проверяем загруженные переменные
+console.log(
+	`[${new Date().toISOString()}] 🔍 Проверка загруженных переменных окружения:`
+)
+console.log(
+	`[${new Date().toISOString()}] TELEGRAM_BOT_TOKEN:`,
+	process.env.TELEGRAM_BOT_TOKEN
+)
+console.log(
+	`[${new Date().toISOString()}] TELEGRAM_API_ID:`,
+	process.env.TELEGRAM_API_ID
+)
+console.log(
+	`[${new Date().toISOString()}] TELEGRAM_API_HASH:`,
+	process.env.TELEGRAM_API_HASH
+)
+console.log(
+	`[${new Date().toISOString()}] TELEGRAM_PHONE:`,
+	process.env.TELEGRAM_PHONE
+)
+
 const app = express()
 const httpServer = createServer(app)
 const io = new Server(httpServer, {
 	path: '/ws',
 	cors: {
-		origin: ['https://app.salestrack.kz', 'https://app.salestrack.kz'],
+		origin: ['http://localhost:3000', 'http://localhost:3000'],
 		methods: ['GET', 'POST'],
 	},
 })
@@ -35,7 +78,7 @@ const io = new Server(httpServer, {
 // Настройки CORS
 app.use(
 	cors({
-		origin: ['https://app.salestrack.kz', 'https://app.salestrack.kz'],
+		origin: ['http://localhost:3000', 'http://localhost:3000'],
 		credentials: true,
 	})
 )
@@ -90,6 +133,35 @@ io.on('connection', (socket: Socket) => {
 // Экспортируем io для использования в других модулях
 export { io }
 
+// Проверяем наличие всех необходимых переменных окружения
+const requiredEnvVars = [
+	'MONGO_URI',
+	'TELEGRAM_BOT_TOKEN',
+	'TELEGRAM_API_ID',
+	'TELEGRAM_API_HASH',
+	'TELEGRAM_PHONE',
+]
+
+console.log(`[${new Date().toISOString()}] 🔍 Проверка переменных окружения:`)
+for (const envVar of requiredEnvVars) {
+	const value = process.env[envVar]
+	console.log(
+		`[${new Date().toISOString()}] ${envVar}: ${
+			value ? '✅ Установлено' : '❌ Отсутствует'
+		}`
+	)
+	if (!value) {
+		console.error(
+			`[${new Date().toISOString()}] ❌ Отсутствует обязательная переменная окружения: ${envVar}`
+		)
+		process.exit(1)
+	}
+}
+
+console.log(
+	`[${new Date().toISOString()}] ✅ Все необходимые переменные окружения присутствуют`
+)
+
 // Инициализируем подключение к MongoDB
 mongoose
 	.connect(process.env.MONGO_URI!, {
@@ -140,6 +212,25 @@ httpServer.listen(PORT, async () => {
 	)
 
 	try {
+		// Инициализируем TelegramService
+		const telegramService = TelegramService.getInstance()
+		console.log(
+			`[${new Date().toISOString()}] 🔄 Инициализация TelegramService...`
+		)
+		await telegramService.initialize()
+
+		// Проверяем авторизацию
+		const isConnected = await telegramService.isConnected()
+		if (!isConnected) {
+			console.log(
+				`[${new Date().toISOString()}] ⚠️ TelegramService не авторизован`
+			)
+			return
+		}
+		console.log(
+			`[${new Date().toISOString()}] ✅ TelegramService успешно инициализирован`
+		)
+
 		// Ждем подключения к MongoDB
 		if (mongoose.connection.readyState !== 1) {
 			console.log(
@@ -183,25 +274,7 @@ httpServer.listen(PORT, async () => {
 			`[${new Date().toISOString()}] ✅ Админский клиент WhatsApp готов к использованию`
 		)
 
-		// Инициализируем Telegram клиент
-		const telegramService = TelegramService.getInstance()
-		console.log(
-			`[${new Date().toISOString()}] 🔄 Инициализация Telegram клиента...`
-		)
-		await telegramService.initialize()
-
-		// Проверяем авторизацию Telegram
-		const isTelegramAuthorized = await telegramService.isConnected()
-		if (!isTelegramAuthorized) {
-			console.log(
-				`[${new Date().toISOString()}] ⚠️ Telegram клиент не авторизован. Ожидание кода подтверждения...`
-			)
-			return
-		}
-		console.log(
-			`[${new Date().toISOString()}] ✅ Telegram клиент успешно авторизован`
-		)
-
+		// Инициализируем WhatsApp клиентов
 		console.log(
 			`[${new Date().toISOString()}] 🔄 Инициализация WhatsApp клиентов...`
 		)
@@ -233,6 +306,41 @@ httpServer.listen(PORT, async () => {
 		console.log(
 			`[${new Date().toISOString()}] ✅ Крон для ежедневного отчета инициализирован`
 		)
+
+		// Тестовый запуск отчета сразу после инициализации
+		console.log(
+			`[${new Date().toISOString()}] 🔄 Тестовый запуск ежедневного отчета...`
+		)
+		try {
+			const companies = await CompanySettings.find({ isRunning: true })
+			console.log(
+				`[${new Date().toISOString()}] 📊 Найдено компаний для тестового отчета: ${
+					companies.length
+				}`
+			)
+
+			for (const company of companies) {
+				console.log(
+					`[${new Date().toISOString()}] 🔍 Тестовая обработка компании: ${
+						company.nameCompany
+					}`
+				)
+				if (company.telegramGroupId) {
+					const report = await messageMonitor.generateDailyReport(company._id)
+					await messageMonitor.sendTelegramMessage(company._id, report)
+					console.log(
+						`[${new Date().toISOString()}] ✅ Тестовый отчет отправлен для компании ${
+							company.nameCompany
+						}`
+					)
+				}
+			}
+		} catch (error) {
+			console.error(
+				`[${new Date().toISOString()}] ❌ Ошибка при тестовом запуске отчета:`,
+				error
+			)
+		}
 	} catch (error) {
 		console.error(
 			`[${new Date().toISOString()}] ❌ Ошибка при инициализации клиентов:`,
