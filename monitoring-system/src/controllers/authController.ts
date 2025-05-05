@@ -411,29 +411,49 @@ export const verifyResetCode = async (
 	res: Response
 ): Promise<void> => {
 	try {
+		console.log(`[${new Date().toISOString()}] 🔍 Проверка кода сброса пароля:`)
+		console.log('Тело запроса:', req.body)
+
 		const { phoneNumber, code } = req.body
+		console.log('Полученные данные:', { phoneNumber, code })
+
 		const user = await UserModel.findOne({ phoneNumber })
+		console.log(
+			'Найденный пользователь:',
+			user
+				? {
+						phoneNumber: user.phoneNumber,
+						hasVerificationCode: !!user.verificationCode,
+						verificationCodeExpires: user.verificationCodeExpires,
+				  }
+				: 'не найден'
+		)
 
 		if (!user) {
+			console.log('Пользователь не найден')
 			res.status(400).json({ error: 'Пользователь не найден' })
 			return
 		}
 
 		if (!user.verificationCode || !user.verificationCodeExpires) {
+			console.log('Код подтверждения не был отправлен')
 			res.status(400).json({ error: 'Код подтверждения не был отправлен' })
 			return
 		}
 
 		if (user.verificationCode !== code) {
+			console.log('Неверный код подтверждения')
 			res.status(400).json({ error: 'Неверный код подтверждения' })
 			return
 		}
 
 		if (user.verificationCodeExpires < new Date()) {
+			console.log('Код подтверждения истек')
 			res.status(400).json({ error: 'Код подтверждения истек' })
 			return
 		}
 
+		console.log('Код подтвержден успешно')
 		res.json({
 			success: true,
 			message: 'Код подтвержден',
