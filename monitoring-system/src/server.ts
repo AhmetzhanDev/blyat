@@ -88,6 +88,17 @@ app.use(morgan('dev'))
 
 app.use(express.json())
 app.use(express.urlencoded({ extended: true }))
+
+// Добавляем расширенное логирование
+app.use((req, res, next) => {
+	console.log(`[${new Date().toISOString()}] 📥 Входящий запрос:`)
+	console.log(`URL: ${req.url}`)
+	console.log(`Method: ${req.method}`)
+	console.log(`Headers:`, req.headers)
+	console.log(`Body:`, req.body)
+	next()
+})
+
 app.use('/api/auth', authRoutes)
 app.use('/api/whatsapp', whatsappRoutes)
 app.use('/api/integrations', integrationsRoutes)
