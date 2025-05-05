@@ -70,7 +70,7 @@ const httpServer = createServer(app)
 const io = new Server(httpServer, {
 	path: '/ws',
 	cors: {
-		origin: ['http://localhost:3000', 'http://localhost:3000'],
+		origin: ['https://app.salestrack.kz', 'https://app.salestrack.kz'],
 		methods: ['GET', 'POST'],
 	},
 })
@@ -78,7 +78,7 @@ const io = new Server(httpServer, {
 // Настройки CORS
 app.use(
 	cors({
-		origin: ['http://localhost:3000', 'http://localhost:3000'],
+		origin: ['https://app.salestrack.kz', 'https://app.salestrack.kz'],
 		credentials: true,
 	})
 )
