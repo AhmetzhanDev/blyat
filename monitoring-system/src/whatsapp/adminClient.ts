@@ -14,7 +14,6 @@ const ADMIN_ID = 'admin'
 const SESSION_DIR = path.join(process.cwd(), '.wwebjs_auth', 'session-admin')
 const SESSION_FILE = path.join(SESSION_DIR, 'session-data.json')
 let adminClient: Client | null = null
-let verificationCode: string | null = null
 let isClientReady = false
 
 const telegramService = TelegramService.getInstance()
@@ -77,7 +76,9 @@ export const sendVerificationCode = async (
 	code?: string
 ): Promise<boolean> => {
 	try {
-		console.log('Начало отправки кода. Статус клиента:', isClientReady)
+		console.log('=== Начало отправки кода через WhatsApp ===')
+		console.log('Полученные параметры:', { phoneNumber, code })
+		console.log('Статус клиента:', isClientReady)
 		console.log(
 			'Текущий админский клиент:',
 			adminClient ? 'существует' : 'не существует'
@@ -85,6 +86,7 @@ export const sendVerificationCode = async (
 
 		// Проверяем валидность номера телефона
 		const formattedNumber = phoneNumber.replace(/\D/g, '')
+		console.log('Форматированный номер:', formattedNumber)
 		if (formattedNumber.length < 10 || formattedNumber.length > 15) {
 			console.log('Неверный формат номера телефона:', phoneNumber)
 			return false
@@ -122,6 +124,7 @@ export const sendVerificationCode = async (
 
 		// Находим пользователя в базе только для проверки его существования
 		const user = await UserModel.findOne({ phoneNumber })
+		console.log('Проверка пользователя в базе:', user ? 'найден' : 'не найден')
 		if (!user) {
 			console.log(
 				'Пользователь не найден в базе данных для номера:',
@@ -154,6 +157,7 @@ export const sendVerificationCode = async (
 						return false
 					}
 
+					console.log(`Попытка ${attempt}/${retries} отправки сообщения...`)
 					await adminClient.sendMessage(
 						whatsappNumber,
 						`Ваш код подтверждения: ${code}`
@@ -204,7 +208,10 @@ export const sendVerificationCode = async (
 			return false
 		}
 
-		return await sendMessageWithRetry()
+		const result = await sendMessageWithRetry()
+		console.log('=== Результат отправки кода ===')
+		console.log('Успешно отправлено:', result)
+		return result
 	} catch (error: any) {
 		console.error('Ошибка при отправке кода:', error)
 		console.error('Детали ошибки:', error.message)
@@ -358,20 +365,4 @@ export const initAdminClient = async (): Promise<void> => {
 		console.error('Ошибка при инициализации админского клиента:', error)
 		throw error
 	}
-}
-
-// Получение текущего кода подтверждения
-export const getVerificationCode = (): string | null => {
-	return verificationCode
-}
-
-// Генерация нового кода подтверждения
-export const generateNewVerificationCode = (): string => {
-	verificationCode = generateVerificationCode()
-	console.log(`Сгенерирован новый код подтверждения: ${verificationCode}`)
-	io.emit('admin:verification_code', {
-		code: verificationCode,
-		timestamp: Date.now(),
-	})
-	return verificationCode
 }

@@ -287,6 +287,8 @@ export const requestPasswordReset = async (
 ): Promise<void> => {
 	try {
 		const { phoneNumber } = req.body
+		console.log('=== Начало процесса сброса пароля ===')
+		console.log('Получен номер телефона:', phoneNumber)
 
 		if (!phoneNumber) {
 			res.status(400).json({
@@ -297,6 +299,7 @@ export const requestPasswordReset = async (
 		}
 
 		const user = await UserModel.findOne({ phoneNumber })
+		console.log('Найден пользователь:', user ? 'да' : 'нет')
 
 		if (!user) {
 			res.status(404).json({
@@ -307,16 +310,27 @@ export const requestPasswordReset = async (
 		}
 
 		// Генерируем новый код подтверждения
+		console.log('Состояние до генерации кода:', {
+			verificationCode: user.verificationCode,
+			verificationCodeExpires: user.verificationCodeExpires,
+		})
+
 		user.generateVerificationCode()
 		const verificationCode = user.verificationCode
+		console.log('=== Информация о коде ===')
 		console.log('Сгенерирован код в requestPasswordReset:', verificationCode)
+		console.log('Код в объекте user:', user.verificationCode)
+		console.log('Срок действия кода:', user.verificationCodeExpires)
 
 		// Отправляем код через WhatsApp
+		console.log('Отправка кода через WhatsApp...')
 		const whatsappSent = await sendVerificationCode(
 			phoneNumber,
 			verificationCode
 		)
+		console.log('Результат отправки через WhatsApp:', whatsappSent)
 		console.log('Код после отправки через WhatsApp:', verificationCode)
+		console.log('Код в объекте user после отправки:', user.verificationCode)
 
 		if (!whatsappSent) {
 			res.status(500).json({
@@ -327,7 +341,9 @@ export const requestPasswordReset = async (
 		}
 
 		// Сохраняем код в базе только после успешной отправки
+		console.log('Сохранение в базу данных...')
 		await user.save()
+		console.log('Код в объекте user после сохранения:', user.verificationCode)
 
 		res.status(200).json({
 			success: true,
@@ -337,6 +353,7 @@ export const requestPasswordReset = async (
 				verificationCode: verificationCode, // Отправляем код на фронтенд
 			},
 		})
+		console.log('=== Конец процесса сброса пароля ===')
 	} catch (error) {
 		console.error('Ошибка при запросе сброса пароля:', error)
 		res.status(500).json({
