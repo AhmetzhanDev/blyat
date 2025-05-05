@@ -86,12 +86,12 @@ userSchema.methods.generateVerificationCode = function (): void {
 	const min = 1000
 	const max = 9999
 	const range = max - min + 1
-	const bytes = new Uint32Array(1)
-	crypto.getRandomValues(bytes)
-	const newCode = (min + (bytes[0] % range)).toString()
+	const randomBytes = crypto.randomBytes(4)
+	const randomNumber = randomBytes.readUInt32BE(0)
+	const newCode = (min + (randomNumber % range)).toString()
 	console.log('Новый код:', newCode)
 	this.verificationCode = newCode
-	this.verificationCodeExpires = new Date(Date.now() + 5 * 60 * 1000) // 10 минут
+	this.verificationCodeExpires = new Date(Date.now() + 5 * 60 * 1000) // 5 минут
 	this.updatedAt = new Date()
 	console.log('=== КОНЕЦ ГЕНЕРАЦИИ КОДА ===')
 }
