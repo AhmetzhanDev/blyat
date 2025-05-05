@@ -36,7 +36,10 @@ export const sendPhoneNumber = async (
 		await user.save()
 
 		// Отправляем код через WhatsApp
-		const whatsappSent = await sendVerificationCode(phoneNumber)
+		const whatsappSent = await sendVerificationCode(
+			phoneNumber,
+			user.verificationCode
+		)
 
 		if (!whatsappSent) {
 			res.status(500).json({
@@ -355,6 +358,19 @@ export const requestPasswordReset = async (
 			'Код в базе после отправки в WhatsApp:',
 			userAfterWhatsApp?.verificationCode
 		)
+
+		// Проверяем, что код не изменился
+		if (userAfterWhatsApp?.verificationCode !== verificationCode) {
+			console.error('Код изменился после отправки в WhatsApp!', {
+				originalCode: verificationCode,
+				currentCode: userAfterWhatsApp?.verificationCode,
+			})
+			res.status(500).json({
+				success: false,
+				message: 'Ошибка при отправке кода',
+			})
+			return
+		}
 
 		res.status(200).json({
 			success: true,
