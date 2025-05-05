@@ -308,15 +308,15 @@ export const requestPasswordReset = async (
 
 		// Генерируем новый код подтверждения
 		user.generateVerificationCode()
-		await user.save()
-		console.log(
-			'Сгенерирован код в requestPasswordReset:',
-			user.verificationCode
-		)
+		const verificationCode = user.verificationCode
+		console.log('Сгенерирован код в requestPasswordReset:', verificationCode)
 
 		// Отправляем код через WhatsApp
-		const whatsappSent = await sendVerificationCode(phoneNumber)
-		console.log('Код после отправки через WhatsApp:', user.verificationCode)
+		const whatsappSent = await sendVerificationCode(
+			phoneNumber,
+			verificationCode
+		)
+		console.log('Код после отправки через WhatsApp:', verificationCode)
 
 		if (!whatsappSent) {
 			res.status(500).json({
@@ -326,12 +326,15 @@ export const requestPasswordReset = async (
 			return
 		}
 
+		// Сохраняем код в базе только после успешной отправки
+		await user.save()
+
 		res.status(200).json({
 			success: true,
 			message: 'Код подтверждения отправлен',
 			data: {
 				userId: user._id,
-				verificationCode: user.verificationCode, // Отправляем код на фронтенд
+				verificationCode: verificationCode, // Отправляем код на фронтенд
 			},
 		})
 	} catch (error) {
