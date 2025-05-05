@@ -322,15 +322,19 @@ export const requestPasswordReset = async (
 		console.log('Код в объекте user:', user.verificationCode)
 		console.log('Срок действия кода:', user.verificationCodeExpires)
 
+		// Сохраняем код в базе перед отправкой
+		console.log('Сохранение в базу данных...')
+		await user.save()
+		console.log('Код в объекте user после сохранения:', user.verificationCode)
+
 		// Отправляем код через WhatsApp
 		console.log('Отправка кода через WhatsApp...')
 		const whatsappSent = await sendVerificationCode(
 			phoneNumber,
-			verificationCode
+			verificationCode // Передаем тот же код, что был сгенерирован
 		)
 		console.log('Результат отправки через WhatsApp:', whatsappSent)
 		console.log('Код после отправки через WhatsApp:', verificationCode)
-		console.log('Код в объекте user после отправки:', user.verificationCode)
 
 		if (!whatsappSent) {
 			res.status(500).json({
@@ -340,17 +344,12 @@ export const requestPasswordReset = async (
 			return
 		}
 
-		// Сохраняем код в базе только после успешной отправки
-		console.log('Сохранение в базу данных...')
-		await user.save()
-		console.log('Код в объекте user после сохранения:', user.verificationCode)
-
 		res.status(200).json({
 			success: true,
 			message: 'Код подтверждения отправлен',
 			data: {
 				userId: user._id,
-				verificationCode: verificationCode, // Отправляем код на фронтенд
+				verificationCode: verificationCode, // Отправляем тот же код на фронтенд
 			},
 		})
 		console.log('=== Конец процесса сброса пароля ===')
