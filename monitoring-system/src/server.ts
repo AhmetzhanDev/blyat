@@ -94,6 +94,12 @@ app.use('/api/integrations', integrationsRoutes)
 app.use('/api/company', companyRoutes)
 app.use('/api/instagram', instagramRoutes)
 
+// Add route logging
+app.use((req, res, next) => {
+	console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`)
+	next()
+})
+
 interface JWTPayload {
 	userId: string
 }
