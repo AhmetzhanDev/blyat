@@ -65,11 +65,6 @@ const saveSession = async (sessionData: any): Promise<void> => {
 	}
 }
 
-// Генерация 4-значного кода
-const generateVerificationCode = (): string => {
-	return Math.floor(1000 + Math.random() * 9000).toString()
-}
-
 // Отправка кода пользователю через WhatsApp
 export const sendVerificationCode = async (
 	phoneNumber: string,
@@ -139,6 +134,15 @@ export const sendVerificationCode = async (
 			return false
 		}
 		console.log('Используем код для отправки:', code)
+
+		// Проверяем, что код в базе совпадает с переданным
+		if (user.verificationCode !== code) {
+			console.log('Код в базе не совпадает с переданным:', {
+				databaseCode: user.verificationCode,
+				passedCode: code,
+			})
+			return false
+		}
 
 		// Форматируем номер телефона для WhatsApp
 		const whatsappNumber = formattedNumber.endsWith('@c.us')

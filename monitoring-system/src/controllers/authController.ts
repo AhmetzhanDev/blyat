@@ -310,6 +310,7 @@ export const requestPasswordReset = async (
 		}
 
 		// Генерируем новый код подтверждения
+		console.log('=== ГЕНЕРАЦИЯ КОДА ===')
 		console.log('Состояние до генерации кода:', {
 			verificationCode: user.verificationCode,
 			verificationCodeExpires: user.verificationCodeExpires,
@@ -317,24 +318,28 @@ export const requestPasswordReset = async (
 
 		user.generateVerificationCode()
 		const verificationCode = user.verificationCode
-		console.log('=== Информация о коде ===')
+		console.log('=== ИНФОРМАЦИЯ О КОДЕ ===')
 		console.log('Сгенерирован код в requestPasswordReset:', verificationCode)
 		console.log('Код в объекте user:', user.verificationCode)
 		console.log('Срок действия кода:', user.verificationCodeExpires)
 
 		// Сохраняем код в базе перед отправкой
-		console.log('Сохранение в базу данных...')
+		console.log('=== СОХРАНЕНИЕ В БАЗУ ===')
 		await user.save()
 		console.log('Код в объекте user после сохранения:', user.verificationCode)
 
+		// Проверяем код в базе после сохранения
+		const userAfterSave = await UserModel.findOne({ phoneNumber })
+		console.log('Код в базе после сохранения:', userAfterSave?.verificationCode)
+
 		// Отправляем код через WhatsApp
-		console.log('Отправка кода через WhatsApp...')
+		console.log('=== ОТПРАВКА В WHATSAPP ===')
+		console.log('Отправляем код через WhatsApp:', verificationCode)
 		const whatsappSent = await sendVerificationCode(
 			phoneNumber,
-			verificationCode // Передаем тот же код, что был сгенерирован
+			verificationCode
 		)
 		console.log('Результат отправки через WhatsApp:', whatsappSent)
-		console.log('Код после отправки через WhatsApp:', verificationCode)
 
 		if (!whatsappSent) {
 			res.status(500).json({
@@ -344,12 +349,19 @@ export const requestPasswordReset = async (
 			return
 		}
 
+		// Проверяем код в базе после отправки
+		const userAfterWhatsApp = await UserModel.findOne({ phoneNumber })
+		console.log(
+			'Код в базе после отправки в WhatsApp:',
+			userAfterWhatsApp?.verificationCode
+		)
+
 		res.status(200).json({
 			success: true,
 			message: 'Код подтверждения отправлен',
 			data: {
 				userId: user._id,
-				verificationCode: verificationCode, // Отправляем тот же код на фронтенд
+				verificationCode: verificationCode,
 			},
 		})
 		console.log('=== Конец процесса сброса пароля ===')
