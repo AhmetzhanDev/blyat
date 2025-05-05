@@ -105,10 +105,39 @@ app.use('/api/integrations', integrationsRoutes)
 app.use('/api/company', companyRoutes)
 app.use('/api/instagram', instagramRoutes)
 
+// Проверяем регистрацию маршрутов
+console.log(`[${new Date().toISOString()}] 🔍 Проверка регистрации маршрутов:`)
+const routes = [
+	{ path: '/api/auth', routes: authRoutes },
+	{ path: '/api/whatsapp', routes: whatsappRoutes },
+	{ path: '/api/integrations', routes: integrationsRoutes },
+	{ path: '/api/company', routes: companyRoutes },
+	{ path: '/api/instagram', routes: instagramRoutes },
+]
+
+routes.forEach(route => {
+	console.log(`[${new Date().toISOString()}] ${route.path}: ✅ Зарегистрирован`)
+})
+
 // Add route logging
 app.use((req, res, next) => {
 	console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`)
 	next()
+})
+
+// Обработчик для несуществующих маршрутов
+app.use((req, res) => {
+	console.log(
+		`[${new Date().toISOString()}] ❌ Маршрут не найден: ${req.method} ${
+			req.url
+		}`
+	)
+	res.status(404).json({
+		success: false,
+		message: 'Маршрут не найден',
+		path: req.url,
+		method: req.method,
+	})
 })
 
 interface JWTPayload {
@@ -225,7 +254,22 @@ httpServer.listen(PORT, async () => {
 		`[${new Date().toISOString()}] 🚀 Сервер запущен на порту ${PORT}`
 	)
 	console.log(
-		`[${new Date().toISOString()}] 🌐 API доступен по адресу: http://api.salestrack.kz${PORT}/api`
+		`[${new Date().toISOString()}] 🌐 API доступен по адресу: https://api.salestrack.kz/api`
+	)
+
+	// Проверяем переменные окружения для продакшена
+	console.log(
+		`[${new Date().toISOString()}] 🔍 Проверка переменных окружения для продакшена:`
+	)
+	console.log(`NODE_ENV: ${process.env.NODE_ENV}`)
+	console.log(`PORT: ${PORT}`)
+	console.log(
+		`MONGO_URI: ${process.env.MONGO_URI ? '✅ Установлено' : '❌ Отсутствует'}`
+	)
+	console.log(
+		`JWT_SECRET: ${
+			process.env.JWT_SECRET ? '✅ Установлено' : '❌ Отсутствует'
+		}`
 	)
 
 	try {

@@ -1,30 +1,36 @@
 import dotenv from 'dotenv'
+import path from 'path'
+import fs from 'fs'
 
-dotenv.config()
-
-const requiredEnvVars = [
-	'TELEGRAM_API_ID',
-	'TELEGRAM_API_HASH',
-	'TELEGRAM_PHONE',
-	'TELEGRAM_BOT_TOKEN',
-	'TELEGRAM_BOT_USERNAME',
-	'MONGO_URI',
-	'JWT_SECRET',
-	'OPENAI_API_KEY',
-]
-
-function checkEnvVars() {
-	console.log('🔍 Проверка переменных окружения...')
-
-	const missingVars = requiredEnvVars.filter(varName => !process.env[varName])
-
-	if (missingVars.length > 0) {
-		console.error('❌ Отсутствуют следующие переменные окружения:')
-		missingVars.forEach(varName => console.error(`- ${varName}`))
-		process.exit(1)
-	}
-
-	console.log('✅ Все необходимые переменные окружения установлены')
+// Загружаем .env файл
+const envPath = path.join(__dirname, '../../.env')
+if (fs.existsSync(envPath)) {
+	dotenv.config({ path: envPath })
+} else {
+	console.log('Файл .env не найден, используем переменные окружения системы')
 }
 
-checkEnvVars()
+// Проверяем обязательные переменные окружения
+const requiredEnvVars = ['MONGO_URI', 'JWT_SECRET', 'PORT', 'NODE_ENV']
+
+const missingVars = requiredEnvVars.filter(varName => !process.env[varName])
+
+if (missingVars.length > 0) {
+	console.error('Отсутствуют обязательные переменные окружения:', missingVars)
+	process.exit(1)
+}
+
+// Проверяем значения
+console.log('Проверка переменных окружения:')
+console.log('NODE_ENV:', process.env.NODE_ENV)
+console.log('PORT:', process.env.PORT)
+console.log(
+	'MONGO_URI:',
+	process.env.MONGO_URI ? '✅ Установлено' : '❌ Отсутствует'
+)
+console.log(
+	'JWT_SECRET:',
+	process.env.JWT_SECRET ? '✅ Установлено' : '❌ Отсутствует'
+)
+
+export {}

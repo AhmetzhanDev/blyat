@@ -13,6 +13,14 @@ import { authMiddleware } from '../middlewares/authMiddleware'
 
 const router = express.Router()
 
+// Middleware для логирования всех запросов к auth routes
+router.use((req, res, next) => {
+	console.log(
+		`[${new Date().toISOString()}] 🔐 Auth Route: ${req.method} ${req.path}`
+	)
+	next()
+})
+
 // Маршруты регистрации
 router.post('/register/phone', sendPhoneNumber) // Шаг 1: Отправка номера
 router.post('/register/verify', verifyCode) // Шаг 2: Проверка кода
