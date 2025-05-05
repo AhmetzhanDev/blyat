@@ -49,13 +49,32 @@ const sendWhatsAppCode = async (
 			return
 		}
 
+		// Проверяем, что у пользователя есть код
+		if (!user.verificationCode) {
+			res.status(400).json({ error: 'Код подтверждения не был сгенерирован' })
+			return
+		}
+
+		const verificationCode = user.verificationCode
+
 		// Отправляем код через WhatsApp
 		const success = await sendVerificationCode(
 			user.phoneNumber,
-			user.verificationCode
+			verificationCode
 		)
 		if (!success) {
 			res.status(500).json({ error: 'Не удалось отправить код' })
+			return
+		}
+
+		// Проверяем, что код не изменился
+		const userAfterWhatsApp = await UserModel.findById(userId)
+		if (userAfterWhatsApp?.verificationCode !== verificationCode) {
+			console.error('Код изменился после отправки в WhatsApp!', {
+				originalCode: verificationCode,
+				currentCode: userAfterWhatsApp?.verificationCode,
+			})
+			res.status(500).json({ error: 'Ошибка при отправке кода' })
 			return
 		}
 
