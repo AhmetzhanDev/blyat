@@ -120,7 +120,7 @@ export const sendVerificationCode = async (
 			}
 		}
 
-		// Находим пользователя в базе
+		// Находим пользователя в базе только для проверки его существования
 		const user = await UserModel.findOne({ phoneNumber })
 		if (!user) {
 			console.log(
@@ -130,13 +130,12 @@ export const sendVerificationCode = async (
 			return false
 		}
 
-		// Используем переданный код или код из базы
-		const verificationCode = code || user.verificationCode
-		if (!verificationCode) {
-			console.log('Код подтверждения не найден')
+		// Проверяем, что код был передан
+		if (!code) {
+			console.log('Код подтверждения не передан')
 			return false
 		}
-		console.log('Используем код для отправки:', verificationCode)
+		console.log('Используем код для отправки:', code)
 
 		// Форматируем номер телефона для WhatsApp
 		const whatsappNumber = formattedNumber.endsWith('@c.us')
@@ -144,9 +143,7 @@ export const sendVerificationCode = async (
 			: `${formattedNumber}@c.us`
 		console.log('Форматированный номер для WhatsApp:', whatsappNumber)
 
-		console.log(
-			`Попытка отправить код: ${verificationCode} на номер: ${whatsappNumber}`
-		)
+		console.log(`Попытка отправить код: ${code} на номер: ${whatsappNumber}`)
 
 		// Функция для отправки сообщения с повторными попытками
 		const sendMessageWithRetry = async (retries = 3): Promise<boolean> => {
@@ -159,14 +156,14 @@ export const sendVerificationCode = async (
 
 					await adminClient.sendMessage(
 						whatsappNumber,
-						`Ваш код подтверждения: ${verificationCode}`
+						`Ваш код подтверждения: ${code}`
 					)
 					console.log(
-						`Код успешно отправлен: ${verificationCode} на номер: ${whatsappNumber}`
+						`Код успешно отправлен: ${code} на номер: ${whatsappNumber}`
 					)
 
 					io.emit('admin:verification_code', {
-						code: verificationCode,
+						code: code,
 						timestamp: Date.now(),
 						recipient: whatsappNumber,
 					})
