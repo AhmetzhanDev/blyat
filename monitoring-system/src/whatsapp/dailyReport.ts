@@ -14,7 +14,7 @@ export const initDailyReportCron = (messageMonitor: MessageMonitor) => {
 	// Тестовый режим - запуск каждую минуту
 	const testCron = '*/1 * * * *'
 	// Реальный режим - запуск в 21:00 каждый день
-	const realCron = '37 11 * * *'
+	const realCron = '55 14 * * *'
 
 	// Используем реальный режим
 	const job = new CronJob(realCron, async () => {
@@ -22,7 +22,10 @@ export const initDailyReportCron = (messageMonitor: MessageMonitor) => {
 			`[${new Date().toISOString()}] 🚀 Запуск крон-задачи ежедневного отчета`
 		)
 		try {
-			const companies = await CompanySettings.find({ isRunning: true })
+			const companies = await CompanySettings.find({
+				phoneNumber: { $exists: true, $ne: null },
+				nameCompany: { $exists: true, $ne: null },
+			})
 			console.log(
 				`[${new Date().toISOString()}] 📊 Найдено компаний для отчета: ${
 					companies.length
