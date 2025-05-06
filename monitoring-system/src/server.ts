@@ -37,7 +37,7 @@ const io = new Server(httpServer, {
 // Настройки CORS
 app.use(
 	cors({
-		origin: ['https://app.salestrack.kz', 'https://api.salestrack.kz'],
+		origin: ['https://app.salestrack.kz', 'https://app.salestrack.kz'],
 		credentials: true,
 	})
 )
@@ -190,8 +190,10 @@ mongoose
 		retryReads: true, // повторные попытки чтения
 		w: 'majority', // подтверждение записи большинством
 	})
-	.then(() => {
+	.then(async () => {
 		console.log(`[${new Date().toISOString()}] ✅ Подключено к MongoDB`)
+		// Инициализируем админский клиент после подключения к БД
+		await initAdminClient()
 	})
 	.catch(err => {
 		console.error(

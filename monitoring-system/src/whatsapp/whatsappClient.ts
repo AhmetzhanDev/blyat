@@ -350,6 +350,10 @@ export const generateUserQR = async (
 					timestamp: new Date().toISOString(),
 					whatsappAuthorized: true,
 					companyId,
+					phoneNumber: client.info.wid._serialized
+						.replace('@c.us', '')
+						.replace('+', '')
+						.replace(/\D/g, ''),
 				})
 				// } else {
 				//   console.error('[QR-DEBUG] Не найден socketId для userId:', userId);

@@ -9,14 +9,21 @@ import { UserModel } from '../models/User'
 
 export const saveCompanySettings = async (req: Request, res: Response) => {
 	try {
-		const { userId, nameCompany, managerResponse, idCompany, companyId } =
-			req.body
+		const {
+			userId,
+			nameCompany,
+			managerResponse,
+			idCompany,
+			companyId,
+			phoneNumber,
+		} = req.body
 
 		console.log('Попытка создания компании:', {
 			userId,
 			nameCompany,
 			managerResponse,
 			idCompany,
+			phoneNumber,
 		})
 
 		if (
@@ -24,12 +31,31 @@ export const saveCompanySettings = async (req: Request, res: Response) => {
 			!nameCompany ||
 			!managerResponse ||
 			!idCompany ||
-			!companyId
+			!companyId ||
+			!phoneNumber
 		) {
 			return res.status(400).json({
 				success: false,
 				message:
-					'Необходимо указать userId, название компании, время ответа менеджера и id компании',
+					'Данный номер уже зарегистрирован. Для подключения, используйте другой номер.',
+			})
+		}
+
+		// Проверяем, не используется ли уже этот номер телефона
+		const existingPhone = await CompanySettings.findOne({
+			phoneNumber: phoneNumber,
+			nameCompany: { $exists: true, $ne: null },
+		})
+
+		if (existingPhone) {
+			console.log(
+				'Найден дубликат номера телефона с названием компании:',
+				phoneNumber
+			)
+			return res.status(400).json({
+				success: false,
+				message:
+					'Данный номер уже зарегистрирован. Для подключения, используйте другой номер.',
 			})
 		}
 
@@ -50,7 +76,7 @@ export const saveCompanySettings = async (req: Request, res: Response) => {
 		const newCompany = {
 			id: idCompany,
 			nameCompany,
-			phoneNumber: settings?.phoneNumber || '',
+			phoneNumber,
 			managerResponse: responseTime,
 			companyId,
 			createdAt: new Date(),
