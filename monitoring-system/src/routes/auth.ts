@@ -34,10 +34,12 @@ router.post('/register/password', createPassword) // Шаг 3: Создание 
 // Маршруты авторизации
 router.post('/login', login)
 router.post('/verify-phone', verifyPhone)
-router.post('/request-password-reset', requestPasswordReset)
-router.post('/reset-password', resetPassword)
 
-// Проверка кода для сброса пароля
+// Маршруты сброса пароля (без аутентификации)
+router.post('/request-password-reset', requestPasswordReset)
 router.post('/verify-reset-code', verifyResetCode)
+
+// Маршруты, требующие аутентификации
+router.post('/reset-password', authMiddleware, resetPassword)
 
 export default router

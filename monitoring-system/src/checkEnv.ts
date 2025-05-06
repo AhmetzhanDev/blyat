@@ -3,12 +3,7 @@ import path from 'path'
 import fs from 'fs'
 
 // Загружаем .env файл
-const envPath = path.join(__dirname, '../../.env')
-if (fs.existsSync(envPath)) {
-	dotenv.config({ path: envPath })
-} else {
-	console.log('Файл .env не найден, используем переменные окружения системы')
-}
+dotenv.config()
 
 // Проверяем обязательные переменные окружения
 const requiredEnvVars = ['MONGO_URI', 'JWT_SECRET', 'PORT', 'NODE_ENV']

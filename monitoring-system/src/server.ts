@@ -22,48 +22,8 @@ import './checkEnv'
 import path from 'path'
 import fs from 'fs'
 
-// Проверяем наличие и загрузку .env файла
-const envPath = path.join(__dirname, '../../.env')
-console.log(
-	`[${new Date().toISOString()}] 🔍 Проверка .env файла по пути: ${envPath}`
-)
-
-if (fs.existsSync(envPath)) {
-	console.log(`[${new Date().toISOString()}] ✅ .env файл найден`)
-	const envContent = fs.readFileSync(envPath, 'utf8')
-	console.log(
-		`[${new Date().toISOString()}] 📝 Содержимое .env файла:`,
-		envContent
-	)
-} else {
-	console.error(
-		`[${new Date().toISOString()}] ❌ .env файл не найден по пути: ${envPath}`
-	)
-}
-
 // Загружаем переменные окружения
 dotenv.config()
-
-// Проверяем загруженные переменные
-console.log(
-	`[${new Date().toISOString()}] 🔍 Проверка загруженных переменных окружения:`
-)
-console.log(
-	`[${new Date().toISOString()}] TELEGRAM_BOT_TOKEN:`,
-	process.env.TELEGRAM_BOT_TOKEN
-)
-console.log(
-	`[${new Date().toISOString()}] TELEGRAM_API_ID:`,
-	process.env.TELEGRAM_API_ID
-)
-console.log(
-	`[${new Date().toISOString()}] TELEGRAM_API_HASH:`,
-	process.env.TELEGRAM_API_HASH
-)
-console.log(
-	`[${new Date().toISOString()}] TELEGRAM_PHONE:`,
-	process.env.TELEGRAM_PHONE
-)
 
 const app = express()
 const httpServer = createServer(app)
