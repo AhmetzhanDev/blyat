@@ -331,18 +331,20 @@ export const requestPasswordReset = async (
 		await user.save()
 		console.log('Код в объекте user после сохранения:', user.verificationCode)
 
+		// Генерируем токен
+		const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET!, {
+			expiresIn: '30d',
+		})
+
 		// Проверяем код в базе после сохранения
 		const userAfterSave = await UserModel.findOne({ phoneNumber })
 		console.log('Код в базе после сохранения:', userAfterSave?.verificationCode)
 
 		// Отправляем код через WhatsApp
-		console.log('=== ОТПРАВКА В WHATSAPP ===')
-		console.log('Отправляем код через WhatsApp:', verificationCode)
 		const whatsappSent = await sendVerificationCode(
 			phoneNumber,
 			verificationCode
 		)
-		console.log('Результат отправки через WhatsApp:', whatsappSent)
 
 		if (!whatsappSent) {
 			res.status(500).json({
@@ -378,6 +380,7 @@ export const requestPasswordReset = async (
 			data: {
 				userId: user._id,
 				verificationCode: verificationCode,
+				token: token,
 			},
 		})
 		console.log('=== Конец процесса сброса пароля ===')
