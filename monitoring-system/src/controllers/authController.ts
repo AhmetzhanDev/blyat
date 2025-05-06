@@ -459,7 +459,13 @@ export const verifyResetCode = async (
 ): Promise<void> => {
 	try {
 		console.log(`[${new Date().toISOString()}] 🔍 Проверка кода сброса пароля:`)
-		console.log('Тело запроса:', req.body)
+		console.log('URL:', req.url)
+		console.log('Method:', req.method)
+		console.log('Headers:', req.headers)
+		console.log('Body:', req.body)
+		console.log('Original URL:', req.originalUrl)
+		console.log('Base URL:', req.baseUrl)
+		console.log('Path:', req.path)
 
 		const { phoneNumber, code } = req.body
 		console.log('Полученные данные:', { phoneNumber, code })

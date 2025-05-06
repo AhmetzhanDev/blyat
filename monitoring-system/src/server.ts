@@ -78,7 +78,7 @@ const io = new Server(httpServer, {
 // Настройки CORS
 app.use(
 	cors({
-		origin: ['https://app.salestrack.kz', 'https://app.salestrack.kz'],
+		origin: ['https://app.salestrack.kz', 'https://api.salestrack.kz'],
 		credentials: true,
 	})
 )
@@ -117,6 +117,14 @@ const routes = [
 
 routes.forEach(route => {
 	console.log(`[${new Date().toISOString()}] ${route.path}: ✅ Зарегистрирован`)
+	// Выводим все подмаршруты
+	const stack = route.routes.stack
+	stack.forEach(layer => {
+		if (layer.route) {
+			const methods = Object.keys(layer.route.methods).join(',').toUpperCase()
+			console.log(`  ${methods} ${route.path}${layer.route.path}`)
+		}
+	})
 })
 
 // Add route logging

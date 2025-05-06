@@ -18,6 +18,11 @@ router.use((req, res, next) => {
 	console.log(
 		`[${new Date().toISOString()}] 🔐 Auth Route: ${req.method} ${req.path}`
 	)
+	console.log('Original URL:', req.originalUrl)
+	console.log('Base URL:', req.baseUrl)
+	console.log('Path:', req.path)
+	console.log('Headers:', req.headers)
+	console.log('Body:', req.body)
 	next()
 })
 
