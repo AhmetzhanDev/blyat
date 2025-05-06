@@ -18,7 +18,6 @@ import { CompanySettings } from './models/CompanySettings'
 import { initCron } from './whatsapp/closedChats'
 import { initDailyReportCron } from './whatsapp/dailyReport'
 import { MessageMonitor } from './whatsapp/messageMonitor'
-import './checkEnv'
 import path from 'path'
 import fs from 'fs'
 
