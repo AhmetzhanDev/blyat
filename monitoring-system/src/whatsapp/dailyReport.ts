@@ -14,7 +14,7 @@ export const initDailyReportCron = (messageMonitor: MessageMonitor) => {
 	// Тестовый режим - запуск каждую минуту
 	const testCron = '*/1 * * * *'
 	// Реальный режим - запуск в 21:00 каждый день
-	const realCron = '21 22 * * *'
+	const realCron = '20 11 * * *'
 
 	// Используем реальный режим
 	const job = new CronJob(realCron, async () => {

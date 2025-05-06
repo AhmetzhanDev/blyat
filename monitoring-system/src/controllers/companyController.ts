@@ -73,10 +73,23 @@ export const saveCompanySettings = async (req: Request, res: Response) => {
 		await telegramService.initialize()
 		await telegramService.createGroupsForCompanies([newCompany])
 
+		// Получаем обновленные данные компании с Telegram ссылкой
+		const updatedCompany = await CompanySettings.findOne({
+			_id: new Types.ObjectId(companyId),
+		})
+
+		if (!updatedCompany) {
+			throw new Error('Компания не найдена после создания')
+		}
+
 		res.status(201).json({
 			success: true,
 			message: 'Компания успешно добавлена',
-			data: newCompany,
+			data: {
+				...newCompany,
+				telegramGroupId: updatedCompany.telegramGroupId,
+				telegramInviteLink: updatedCompany.telegramInviteLink,
+			},
 		})
 	} catch (error) {
 		console.error('Ошибка при сохранении настроек компании:', error)
