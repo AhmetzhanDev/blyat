@@ -121,7 +121,10 @@ routes.forEach(route => {
 	const stack = route.routes.stack
 	stack.forEach(layer => {
 		if (layer.route) {
-			const methods = Object.keys(layer.route.methods).join(',').toUpperCase()
+			const methods = Object.keys((layer.route as any).methods)
+				.join(',')
+				.toUpperCase()
+
 			console.log(`  ${methods} ${route.path}${layer.route.path}`)
 		}
 	})
