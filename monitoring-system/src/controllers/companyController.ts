@@ -169,13 +169,20 @@ export const getCompanySettings = async (req: Request, res: Response) => {
 export const updateCompanySettings = async (req: Request, res: Response) => {
 	try {
 		const { userId, companyId } = req.params
-		const { nameCompany, managerResponse } = req.body
+		const {
+			nameCompany,
+			managerResponse,
+			working_hours_start,
+			working_hours_end,
+		} = req.body
 
 		console.log('Попытка обновления компании:', {
 			userId,
 			companyId,
 			nameCompany,
 			managerResponse,
+			working_hours_start,
+			working_hours_end,
 		})
 
 		if (!nameCompany || !managerResponse) {
@@ -216,13 +223,26 @@ export const updateCompanySettings = async (req: Request, res: Response) => {
 
 		await CompanySettings.updateOne(
 			{ _id: new Types.ObjectId(companyId) },
-			{ $set: { nameCompany, managerResponse } }
+			{
+				$set: {
+					nameCompany,
+					managerResponse,
+					working_hours_start,
+					working_hours_end,
+				},
+			}
 		)
 
 		res.status(200).json({
 			success: true,
 			message: 'Данные компании успешно обновлены',
-			data: { ...settings, nameCompany, managerResponse },
+			data: {
+				...settings,
+				nameCompany,
+				managerResponse,
+				working_hours_start,
+				working_hours_end,
+			},
 		})
 	} catch (error) {
 		console.error('Ошибка при обновлении данных компании:', error)
