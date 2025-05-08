@@ -103,6 +103,9 @@ export const sendVerificationCode = async (
 
 		// Проверяем состояние сессии
 		console.log(adminClient)
+		console.log('getState', adminClient.getState);
+		console.log('typeof' ,typeof adminClient.getState); // should be 'function'
+
 		const sessionState = await adminClient?.getState()
 		console.log('Состояние сессии WhatsApp:', sessionState)
 
