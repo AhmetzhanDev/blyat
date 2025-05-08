@@ -125,6 +125,17 @@ export const getOrCreateClient = (companyId: string): Client => {
 
 			try {
 				// Проверяем все возможные признаки исходящего сообщения
+				console.log(
+					`[${new Date().toISOString()}] 🔍 Проверка условий для исходящего сообщения:`,
+					{
+						fromMe: message.fromMe,
+						isForwarded: message.isForwarded,
+						isStatus: message.isStatus,
+						hasTo: !!message.to,
+						messageType: message.type,
+					}
+				)
+
 				if (
 					message.fromMe ||
 					message.isForwarded ||
@@ -135,6 +146,10 @@ export const getOrCreateClient = (companyId: string): Client => {
 						`[${new Date().toISOString()}] 👤 Определено как исходящее сообщение`
 					)
 					await messageMonitor.handleOutgoingMessage(message)
+				} else {
+					console.log(
+						`[${new Date().toISOString()}] ⚠️ Сообщение не определено как исходящее`
+					)
 				}
 			} catch (error) {
 				console.error(

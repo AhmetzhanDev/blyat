@@ -365,35 +365,60 @@ export class MessageMonitor {
 			})
 
 			// Находим компанию по номеру телефона
+			console.log(
+				`[${timestamp}] 🔍 Поиск компании по номеру: ${cleanPhoneNumber}`
+			)
 			const company = await CompanySettings.findOne({
 				phoneNumber: cleanPhoneNumber,
 			})
+
 			if (!company) {
 				console.log(
 					`[${timestamp}] ❌ Компания не найдена для номера: ${cleanPhoneNumber}`
 				)
+				console.log(
+					`[${timestamp}] 🔍 Доступные компании:`,
+					await CompanySettings.find({}, 'phoneNumber')
+				)
 				return
 			}
-			console.log(`[${timestamp}] ✅ Найдена компания:`, company)
+			console.log(`[${timestamp}] ✅ Найдена компания:`, {
+				id: company._id,
+				name: company.nameCompany,
+				phoneNumber: company.phoneNumber,
+			})
 
 			// Проверка на наличие чата в базе данных
+			console.log(
+				`[${timestamp}] 🔍 Поиск чата для номера: ${clientCleanPhoneNumber}`
+			)
 			let chat = await WhatsappChat.findOne({ chatId: clientCleanPhoneNumber })
-			console.log(`[${timestamp}] 🔍 Результат поиска чата:`, chat)
+			console.log(
+				`[${timestamp}] 🔍 Результат поиска чата:`,
+				chat
+					? {
+							id: chat._id,
+							chatId: chat.chatId,
+							companyId: chat.companyId,
+					  }
+					: 'Чат не найден'
+			)
 
 			if (!chat) {
 				console.log(
 					`[${timestamp}] ❌ Чат с номером ${clientCleanPhoneNumber} не найден, создаем новый`
 				)
-
 				try {
 					chat = new WhatsappChat({
 						companyId: company._id,
 						chatId: clientCleanPhoneNumber,
 					})
 					await chat.save()
-					console.log(
-						`[${timestamp}] 📝 Новый чат успешно сохранен для: ${clientCleanPhoneNumber}`
-					)
+					console.log(`[${timestamp}] 📝 Новый чат успешно сохранен:`, {
+						id: chat._id,
+						chatId: chat.chatId,
+						companyId: chat.companyId,
+					})
 				} catch (error) {
 					console.error(
 						`[${timestamp}] ❌ Ошибка при сохранении нового чата:`,
@@ -401,14 +426,13 @@ export class MessageMonitor {
 					)
 					return
 				}
-			} else {
-				console.log(`[${timestamp}] ✅ Чат найден:`, chat)
 			}
 
 			// Сохраняем сообщение
+			console.log(`[${timestamp}] 📝 Сохранение сообщения в базу данных`)
 			const whatsappMessage = new WhatsappMessage({
-				isEcho: true, // Всегда true для исходящих сообщений
-				text: message.body,
+				isEcho: true,
+				text: message.body || '[Сообщение без текста]',
 				whatsappChatId: chat._id,
 				companyId: company._id,
 				isClosed: false,
@@ -416,7 +440,12 @@ export class MessageMonitor {
 
 			try {
 				await whatsappMessage.save()
-				console.log(`[${timestamp}] ✅ Сообщение сохранено:`, whatsappMessage)
+				console.log(`[${timestamp}] ✅ Сообщение успешно сохранено:`, {
+					id: whatsappMessage._id,
+					text: whatsappMessage.text,
+					chatId: whatsappMessage.whatsappChatId,
+					companyId: whatsappMessage.companyId,
+				})
 			} catch (error) {
 				console.error(
 					`[${timestamp}] ❌ Ошибка при сохранении сообщения:`,
