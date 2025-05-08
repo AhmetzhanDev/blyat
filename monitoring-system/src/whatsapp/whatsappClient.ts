@@ -97,6 +97,8 @@ export const getOrCreateClient = (companyId: string): Client => {
 				type: message.type,
 				isForwarded: message.isForwarded,
 				isStatus: message.isStatus,
+				hasMedia: message.hasMedia,
+				timestamp: message.timestamp,
 			})
 			try {
 				await messageMonitor.handleMessage(message)
@@ -117,6 +119,8 @@ export const getOrCreateClient = (companyId: string): Client => {
 				type: message.type,
 				isForwarded: message.isForwarded,
 				isStatus: message.isStatus,
+				hasMedia: message.hasMedia,
+				timestamp: message.timestamp,
 			})
 
 			try {
@@ -158,7 +162,27 @@ export const getOrCreateClient = (companyId: string): Client => {
 
 	client.on('ready', () => {
 		console.log(`[${new Date().toISOString()}] ✅ Клиент готов к работе`)
+		console.log(`[${new Date().toISOString()}] 📱 Информация о клиенте:`, {
+			wid: client.info?.wid,
+			platform: client.info?.platform,
+			pushname: client.info?.pushname,
+		})
 		addMessageHandlers() // Переподключаем обработчики при готовности клиента
+	})
+
+	// Добавляем обработчик ошибок
+	client.on('auth_failure', error => {
+		console.error(
+			`[${new Date().toISOString()}] ❌ Ошибка аутентификации:`,
+			error
+		)
+	})
+
+	client.on('change_state', state => {
+		console.log(
+			`[${new Date().toISOString()}] 🔄 Изменение состояния клиента:`,
+			state
+		)
 	})
 
 	return client
