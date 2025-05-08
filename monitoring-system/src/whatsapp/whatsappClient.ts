@@ -811,7 +811,7 @@ export const initAdminClient = async (): Promise<Client> => {
 	)
 
 	// Проверяем наличие сессии админа
-	const adminSessionPath = path.join(sessionsDir, 'session-admin', 'Default')
+	const adminSessionPath = path.join(sessionsDir, 'session-admin')
 	const hasAdminSession = fs.existsSync(adminSessionPath)
 	console.log(
 		`[${new Date().toISOString()}] 🔍 Проверка сессии админа:`,
@@ -823,12 +823,13 @@ export const initAdminClient = async (): Promise<Client> => {
 		console.log(
 			`[${new Date().toISOString()}] ⚠️ Сессия админа не найдена, создаем новую`
 		)
+		fs.mkdirSync(adminSessionPath, { recursive: true })
 	}
 
 	const client = new Client({
 		authStrategy: new LocalAuth({
 			clientId: 'session-admin',
-			dataPath: path.join(sessionsDir, 'session-admin'),
+			dataPath: sessionsDir,
 		}),
 		puppeteer: {
 			args: [
