@@ -27,6 +27,16 @@ interface SessionData {
 	WAToken2?: string
 }
 
+const waitForClientReady = (): Promise<void> => {
+	return new Promise(resolve => {
+		if (isClientReady) return resolve();
+		adminClient?.once('ready', () => {
+			isClientReady = true;
+			resolve();
+		});
+	});
+};
+
 // Проверка существующей сессии
 const checkExistingSession = (): boolean => {
 	try {
@@ -90,38 +100,28 @@ export const sendVerificationCode = async (
 		}
 
 		// Если клиент не готов, пробуем переподключиться
-		if (!isClientReady || !adminClient) {
-			console.log('Попытка переподключения клиента...')
-			await initAdminClient()
-
-			// Ждем некоторое время для инициализации
-			await new Promise(resolve => setTimeout(resolve, 30000))
-
-			if (!isClientReady || !adminClient) {
-				console.log('Не удалось переподключить клиент')
-				return false
-			}
+		if (!adminClient || !isClientReady) {
+			console.log('Попытка переподключения клиента...');
+			await initAdminClient();
+			await waitForClientReady();
 		}
-
-		// Проверяем состояние сессии
-		console.log(adminClient)
-		console.log('getState', adminClient.getState);
-		console.log('typeof' ,typeof adminClient.getState); // should be 'function'
+		
 
 		const sessionState = await adminClient?.getState()
 		console.log('Состояние сессии WhatsApp:', sessionState)
 
 		if (sessionState !== 'CONNECTED') {
-			console.log('Сессия не активна, пробуем переподключиться...')
-			await initAdminClient()
-			await new Promise(resolve => setTimeout(resolve, 30000))
-
-			const newSessionState = await adminClient?.getState()
+			console.log('Сессия не активна, пробуем переподключиться...');
+			await initAdminClient();
+			await waitForClientReady();
+		
+			const newSessionState = await adminClient?.getState();
 			if (newSessionState !== 'CONNECTED') {
-				console.log('Не удалось восстановить сессию')
-				return false
+				console.log('Не удалось восстановить сессию');
+				return false;
 			}
 		}
+		
 
 		// Находим пользователя в базе только для проверки его существования
 		const user = await UserModel.findOne({ phoneNumber })
@@ -364,6 +364,8 @@ export const initAdminClient = async (): Promise<void> => {
 		console.log('Инициализация админского клиента...')
 		await adminClient.initialize()
 		console.log('Админский клиент инициализирован')
+
+		await waitForClientReady();
 
 		// Проверяем состояние сессии после инициализации
 		if (checkExistingSession()) {
