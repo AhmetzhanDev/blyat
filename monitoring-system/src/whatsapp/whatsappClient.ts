@@ -818,14 +818,6 @@ export const initAdminClient = async (): Promise<Client> => {
 		hasAdminSession ? 'найдена' : 'не найдена'
 	)
 
-	// Если сессия не найдена, создаем новую
-	if (!hasAdminSession) {
-		console.log(
-			`[${new Date().toISOString()}] ⚠️ Сессия админа не найдена, создаем новую`
-		)
-		fs.mkdirSync(adminSessionPath, { recursive: true })
-	}
-
 	const client = new Client({
 		authStrategy: new LocalAuth({
 			clientId: 'session-admin',
@@ -848,6 +840,8 @@ export const initAdminClient = async (): Promise<Client> => {
 			],
 		},
 	})
+
+	let isAuthenticated = false
 
 	// Добавляем обработчики сообщений для админа
 	client.on('message', async message => {
@@ -876,6 +870,7 @@ export const initAdminClient = async (): Promise<Client> => {
 		console.log(
 			`[${new Date().toISOString()}] ✅ Админский клиент успешно аутентифицирован`
 		)
+		isAuthenticated = true
 		console.log(
 			`[${new Date().toISOString()}] 📁 Путь к сессии:`,
 			adminSessionPath
@@ -894,14 +889,28 @@ export const initAdminClient = async (): Promise<Client> => {
 		})
 	})
 
+	// Добавляем обработчик отключения
+	client.on('disconnected', () => {
+		console.log(`[${new Date().toISOString()}] ⚠️ Админский клиент отключен`)
+		isAuthenticated = false
+	})
+
 	// Инициализируем клиент
 	console.log(
 		`[${new Date().toISOString()}] 🔄 Начало инициализации админского клиента`
 	)
 	await client.initialize()
-	console.log(
-		`[${new Date().toISOString()}] ✅ Админский клиент успешно инициализирован`
-	)
+
+	// Проверяем состояние аутентификации после инициализации
+	if (isAuthenticated) {
+		console.log(
+			`[${new Date().toISOString()}] ✅ Админский клиент успешно инициализирован и аутентифицирован`
+		)
+	} else {
+		console.log(
+			`[${new Date().toISOString()}] ⚠️ Админский клиент инициализирован, но требует аутентификации`
+		)
+	}
 
 	return client
 }
