@@ -72,7 +72,7 @@ export const getOrCreateClient = (companyId: string): Client => {
 
 	// Если это админский клиент, используем существующую сессию
 	const clientId =
-		companyId === 'admin' ? 'session-admin' : `company-${companyId}`
+		companyId === 'admin' ? 'admin' : `session-company-${companyId}`
 	console.log(
 		`[${new Date().toISOString()}] 🔑 Используем clientId: ${clientId}`
 	)
@@ -781,11 +781,39 @@ export const initAdminClient = async (): Promise<Client> => {
 	const adminSessionPath = path.join(sessionsDir, 'session-admin')
 	const hasAdminSession = fs.existsSync(adminSessionPath)
 	console.log(
-		`[${new Date().toISOString()}] �� Проверка сессии админа:`,
+		`[${new Date().toISOString()}] 🔍 Проверка сессии админа:`,
 		hasAdminSession ? 'найдена' : 'не найдена'
 	)
 
-	const client = getOrCreateClient('admin')
+	// Если сессия не найдена, создаем новую
+	if (!hasAdminSession) {
+		console.log(
+			`[${new Date().toISOString()}] ⚠️ Сессия админа не найдена, создаем новую`
+		)
+	}
+
+	const client = new Client({
+		authStrategy: new LocalAuth({
+			clientId: 'session-admin',
+			dataPath: sessionsDir,
+		}),
+		puppeteer: {
+			args: [
+				'--no-sandbox',
+				'--disable-setuid-sandbox',
+				'--disable-dev-shm-usage',
+				'--disable-accelerated-2d-canvas',
+				'--no-first-run',
+				'--no-zygote',
+				'--disable-gpu',
+				'--disable-extensions',
+				'--disable-software-rasterizer',
+				'--disable-features=site-per-process',
+				'--disable-features=IsolateOrigins',
+				'--disable-site-isolation-trials',
+			],
+		},
+	})
 
 	// Добавляем обработчики сообщений для админа
 	client.on('message', async message => {
@@ -808,6 +836,38 @@ export const initAdminClient = async (): Promise<Client> => {
 			)
 		}
 	})
+
+	// Добавляем обработчик аутентификации
+	client.on('authenticated', () => {
+		console.log(
+			`[${new Date().toISOString()}] ✅ Админский клиент успешно аутентифицирован`
+		)
+		console.log(
+			`[${new Date().toISOString()}] 📁 Путь к сессии:`,
+			adminSessionPath
+		)
+	})
+
+	// Добавляем обработчик готовности
+	client.on('ready', () => {
+		console.log(
+			`[${new Date().toISOString()}] ✅ Админский клиент готов к использованию`
+		)
+		console.log(`[${new Date().toISOString()}] 📱 Информация о клиенте:`, {
+			wid: client.info?.wid,
+			platform: client.info?.platform,
+			pushname: client.info?.pushname,
+		})
+	})
+
+	// Инициализируем клиент
+	console.log(
+		`[${new Date().toISOString()}] 🔄 Начало инициализации админского клиента`
+	)
+	await client.initialize()
+	console.log(
+		`[${new Date().toISOString()}] ✅ Админский клиент успешно инициализирован`
+	)
 
 	return client
 }
