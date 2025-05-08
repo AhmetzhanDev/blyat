@@ -93,7 +93,7 @@ export const sendVerificationCode = async (
 			await initAdminClient()
 
 			// Ждем некоторое время для инициализации
-			await new Promise(resolve => setTimeout(resolve, 5000))
+			await new Promise(resolve => setTimeout(resolve, 30000))
 
 			if (!isClientReady || !adminClient) {
 				console.log('Не удалось переподключить клиент')
@@ -108,7 +108,7 @@ export const sendVerificationCode = async (
 		if (sessionState !== 'CONNECTED') {
 			console.log('Сессия не активна, пробуем переподключиться...')
 			await initAdminClient()
-			await new Promise(resolve => setTimeout(resolve, 5000))
+			await new Promise(resolve => setTimeout(resolve, 30000))
 
 			const newSessionState = await adminClient?.getState()
 			if (newSessionState !== 'CONNECTED') {
@@ -191,7 +191,7 @@ export const sendVerificationCode = async (
 					) {
 						console.log('Обнаружена ошибка сессии, пробуем переподключиться...')
 						await initAdminClient()
-						await new Promise(resolve => setTimeout(resolve, 5000))
+						await new Promise(resolve => setTimeout(resolve, 30000))
 
 						// Проверяем состояние сессии после переподключения
 						const newSessionState = await adminClient?.getState()
