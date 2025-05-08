@@ -121,17 +121,17 @@ export const sendVerificationCode = async (
 		const sessionState = await adminClient?.getState()
 		console.log('Состояние сессии WhatsApp:', sessionState)
 
-		if (sessionState !== 'CONNECTED') {
-			console.log('Сессия не активна, пробуем переподключиться...');
-			await initAdminClient();
-			await waitForClientReady();
+		// if (sessionState !== 'CONNECTED') {
+		// 	console.log('Сессия не активна, пробуем переподключиться...');
+		// 	await initAdminClient();
+		// 	await waitForClientReady();
 		
-			const newSessionState = await adminClient?.getState();
-			if (newSessionState !== 'CONNECTED') {
-				console.log('Не удалось восстановить сессию');
-				return false;
-			}
-		}
+		// 	const newSessionState = await adminClient?.getState();
+		// 	if (newSessionState !== 'CONNECTED') {
+		// 		console.log('Не удалось восстановить сессию');
+		// 		return false;
+		// 	}
+		// }
 		
 
 
