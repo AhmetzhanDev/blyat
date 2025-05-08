@@ -241,6 +241,10 @@ export const generateUserQR = async (
 	companyId: string
 ): Promise<{ client: Client | undefined; qr: string }> => {
 	return new Promise(async (resolve, reject) => {
+		console.log(
+			`[${new Date().toISOString()}] 🔄 Начало generateUserQR для пользователя ${userId} и компании ${companyId}`
+		)
+
 		const settings = await CompanySettings.findOne({
 			userId,
 			_id: new Types.ObjectId(companyId),
@@ -249,6 +253,9 @@ export const generateUserQR = async (
 		})
 
 		if (settings) {
+			console.log(
+				`[${new Date().toISOString()}] ✅ Найдены настройки компании, клиент уже авторизован`
+			)
 			io.emit(`user:${userId}:ready`, {
 				status: 'ready',
 				message: 'WhatsApp клиент готов к работе',
@@ -260,13 +267,36 @@ export const generateUserQR = async (
 		}
 
 		try {
-			console.log('[QR-DEBUG] Начало generateUserQR для пользователя:', userId)
-
-			if (!io) {
-				throw new Error('WebSocket не инициализирован')
-			}
-
+			console.log(
+				`[${new Date().toISOString()}] 🔄 Создание нового клиента для компании ${companyId}`
+			)
 			const client = getOrCreateClient(companyId)
+
+			// Добавляем обработчики сообщений сразу после создания клиента
+			console.log(
+				`[${new Date().toISOString()}] 🔄 Добавление обработчиков сообщений для нового клиента`
+			)
+			client.on('message', async message => {
+				console.log(`[${new Date().toISOString()}] 📥 Входящее сообщение:`, {
+					from: message.from,
+					to: message.to,
+					body: message.body,
+					fromMe: message.fromMe,
+					type: message.type,
+					isForwarded: message.isForwarded,
+					isStatus: message.isStatus,
+					hasMedia: message.hasMedia,
+					timestamp: message.timestamp,
+				})
+				try {
+					await messageMonitor.handleMessage(message)
+				} catch (error) {
+					console.error(
+						`[${new Date().toISOString()}] ❌ Ошибка при обработке входящего сообщения:`,
+						error
+					)
+				}
+			})
 
 			// Clear any existing QR timer for this user
 			if (qrTimers.has(userId)) {
@@ -507,19 +537,135 @@ export const handleQRScanned = async (
 
 export const initWhatsappClients = async (io: any) => {
 	try {
+		console.log(
+			`[${new Date().toISOString()}] 🔄 Начало инициализации существующих WhatsApp клиентов`
+		)
 		const companies = await CompanySettings.find({ whatsappAuthorized: true })
+		console.log(
+			`[${new Date().toISOString()}] 📊 Найдено ${
+				companies.length
+			} авторизованных компаний`
+		)
 
 		for (const company of companies) {
-			console.log(company.userId?.toString())
-			await generateUserQR(
-				company.userId?.toString(),
-				io,
-				company._id.toString()
+			console.log(
+				`[${new Date().toISOString()}] 🔄 Инициализация клиента для компании ${
+					company._id
+				}`
+			)
+			const client = getOrCreateClient(company._id.toString())
+
+			// Добавляем обработчики сообщений
+			console.log(
+				`[${new Date().toISOString()}] 🔄 Добавление обработчиков сообщений для компании ${
+					company._id
+				}`
+			)
+			client.on('message', async message => {
+				console.log(
+					`[${new Date().toISOString()}] 📥 Входящее сообщение для компании ${
+						company._id
+					}:`,
+					{
+						from: message.from,
+						to: message.to,
+						body: message.body,
+						fromMe: message.fromMe,
+						type: message.type,
+						isForwarded: message.isForwarded,
+						isStatus: message.isStatus,
+						hasMedia: message.hasMedia,
+						timestamp: message.timestamp,
+					}
+				)
+				try {
+					await messageMonitor.handleMessage(message)
+				} catch (error) {
+					console.error(
+						`[${new Date().toISOString()}] ❌ Ошибка при обработке входящего сообщения:`,
+						error
+					)
+				}
+			})
+
+			client.on('message_create', async message => {
+				console.log(
+					`[${new Date().toISOString()}] 📤 Создание сообщения для компании ${
+						company._id
+					}:`,
+					{
+						from: message.from,
+						to: message.to,
+						body: message.body,
+						fromMe: message.fromMe,
+						type: message.type,
+						isForwarded: message.isForwarded,
+						isStatus: message.isStatus,
+						hasMedia: message.hasMedia,
+						timestamp: message.timestamp,
+					}
+				)
+
+				try {
+					if (
+						message.fromMe ||
+						message.isForwarded ||
+						message.isStatus ||
+						message.to
+					) {
+						console.log(
+							`[${new Date().toISOString()}] 👤 Определено как исходящее сообщение`
+						)
+						await messageMonitor.handleOutgoingMessage(message)
+					}
+				} catch (error) {
+					console.error(
+						`[${new Date().toISOString()}] ❌ Ошибка при обработке исходящего сообщения:`,
+						error
+					)
+				}
+			})
+
+			// Добавляем обработчик состояния клиента
+			client.on('change_state', state => {
+				console.log(
+					`[${new Date().toISOString()}] 🔄 Изменение состояния клиента для компании ${
+						company._id
+					}:`,
+					state
+				)
+			})
+
+			// Добавляем обработчик готовности
+			client.on('ready', () => {
+				console.log(
+					`[${new Date().toISOString()}] ✅ Клиент готов к работе для компании ${
+						company._id
+					}`
+				)
+				console.log(`[${new Date().toISOString()}] 📱 Информация о клиенте:`, {
+					wid: client.info?.wid,
+					platform: client.info?.platform,
+					pushname: client.info?.pushname,
+				})
+			})
+
+			// Инициализируем клиент
+			console.log(
+				`[${new Date().toISOString()}] 🔄 Начало инициализации клиента для компании ${
+					company._id
+				}`
+			)
+			await client.initialize()
+			console.log(
+				`[${new Date().toISOString()}] ✅ Клиент успешно инициализирован для компании ${
+					company._id
+				}`
 			)
 		}
 	} catch (error) {
 		console.error(
-			`[${new Date().toISOString()}] Ошибка при инициализации WhatsApp клиента:`,
+			`[${new Date().toISOString()}] ❌ Ошибка при инициализации WhatsApp клиентов:`,
 			error
 		)
 	}
