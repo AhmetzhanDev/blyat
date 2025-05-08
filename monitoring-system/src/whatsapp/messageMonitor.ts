@@ -70,6 +70,65 @@ export class MessageMonitor {
 		)
 	}
 
+	private isWithinWorkingHours(company: any): boolean {
+		// Проверяем на null, undefined и пустую строку
+		if (
+			!company.working_hours_start ||
+			!company.working_hours_end ||
+			company.working_hours_start.trim() === '' ||
+			company.working_hours_end.trim() === ''
+		) {
+			console.log(
+				`[${new Date().toISOString()}] ⏰ Рабочее время не указано - работаем круглосуточно`
+			)
+			return true // Если время не указано или пустая строка, считаем что работаем всегда
+		}
+
+		const now = new Date()
+		const utcHours = now.getUTCHours()
+		const utcMinutes = now.getUTCMinutes()
+		const currentTimeInMinutes = utcHours * 60 + utcMinutes
+
+		// Конвертируем время начала и конца в минуты
+		const [startHours, startMinutes] = company.working_hours_start
+			.split(':')
+			.map(Number)
+		const [endHours, endMinutes] = company.working_hours_end
+			.split(':')
+			.map(Number)
+
+		// Проверяем валидность времени
+		if (
+			isNaN(startHours) ||
+			isNaN(startMinutes) ||
+			isNaN(endHours) ||
+			isNaN(endMinutes)
+		) {
+			console.log(
+				`[${new Date().toISOString()}] ⚠️ Некорректный формат времени - работаем круглосуточно`
+			)
+			return true
+		}
+
+		// Конвертируем в UTC (вычитаем 5 часов для Алматы)
+		const startTimeInMinutes = (startHours - 5) * 60 + startMinutes
+		const endTimeInMinutes = (endHours - 5) * 60 + endMinutes
+
+		// Проверяем, находится ли текущее время в диапазоне
+		if (startTimeInMinutes <= endTimeInMinutes) {
+			return (
+				currentTimeInMinutes >= startTimeInMinutes &&
+				currentTimeInMinutes <= endTimeInMinutes
+			)
+		} else {
+			// Обработка случая, когда рабочий день переходит через полночь
+			return (
+				currentTimeInMinutes >= startTimeInMinutes ||
+				currentTimeInMinutes <= endTimeInMinutes
+			)
+		}
+	}
+
 	public async handleMessage(message: Message): Promise<void> {
 		try {
 			const timestamp = new Date().toISOString()
@@ -105,7 +164,7 @@ export class MessageMonitor {
 				console.log(
 					`[${timestamp}] ❌ Компания не найдена для номера: ${cleanPhoneNumber}`
 				)
-				return // Прерываем выполнение, если компания не найдена
+				return
 			}
 			console.log(`[${timestamp}] ✅ Найдена компания:`, company)
 
@@ -118,13 +177,12 @@ export class MessageMonitor {
 					`[${timestamp}] ❌ Чат с номером ${clientCleanPhoneNumber} не найден, создаем новый`
 				)
 
-				// Если чат не найден, создаем новый
 				try {
 					chat = new WhatsappChat({
 						companyId: company._id,
 						chatId: clientCleanPhoneNumber,
 					})
-					await chat.save() // Сохраняем новый чат
+					await chat.save()
 					console.log(
 						`[${timestamp}] 📝 Новый чат успешно сохранен для: ${clientCleanPhoneNumber}`
 					)
@@ -133,7 +191,7 @@ export class MessageMonitor {
 						`[${timestamp}] ❌ Ошибка при сохранении нового чата:`,
 						error
 					)
-					return // Прерываем выполнение, если не удалось сохранить чат
+					return
 				}
 			} else {
 				console.log(`[${timestamp}] ✅ Чат найден:`, chat)
@@ -145,74 +203,91 @@ export class MessageMonitor {
 				text: message.body,
 				whatsappChatId: chat._id,
 				companyId: company._id,
-				isClosed: false, // Сделка еще не закрыта
+				isClosed: false,
 			})
 
 			try {
-				await whatsappMessage.save() // Сохраняем сообщение в базе
+				await whatsappMessage.save()
 				console.log(`[${timestamp}] ✅ Сообщение сохранено:`, whatsappMessage)
 			} catch (error) {
 				console.error(
 					`[${timestamp}] ❌ Ошибка при сохранении сообщения:`,
 					error
 				)
-				return // Прерываем выполнение, если не удалось сохранить сообщение
+				return
 			}
 
-			// Логика с таймером остается
-			if (this.activeTimers.has(message.to)) {
-				console.log(`[${timestamp}] 🔄 Перезапускаем таймер для ${message.to}`)
-				clearTimeout(this.activeTimers.get(message.to))
-			}
-
-			// Отключаем таймер при отправке ответа
-			if (this.activeTimers.has(message.from)) {
-				console.log(`[${timestamp}] 🛑 Отключаем таймер для ${message.from}`)
-				clearTimeout(this.activeTimers.get(message.from))
-				this.activeTimers.delete(message.from)
-				console.log(`[${timestamp}] ✅ Таймер успешно отключен`)
-			}
-
-			// Запускаем новый таймер
-			const timer = setTimeout(async () => {
-				const currentTimestamp = new Date().toISOString()
-				console.log(
-					`[${currentTimestamp}] ⚠️ Время ответа истекло для ${message.to} (чат ${clientCleanPhoneNumber})`
-				)
-
-				if (company.telegramGroupId) {
-					try {
-						const reminderMessage = `⚠️ ВНИМАНИЕ! ⚠️\n\nВ WhatsApp-чате не ответили на сообщение в течение ${company.managerResponse} минут!\n\nСсылка на чат: https://wa.me/${clientCleanPhoneNumber}`
-
-						if (!this.telegramService) {
-							throw new Error('Telegram сервис не инициализирован')
-						}
-
-						const isConnected = await this.telegramService.isConnected()
-						if (!isConnected) {
-							await this.telegramService.initialize()
-						}
-
-						await this.telegramService.sendMessage(
-							`-${company.telegramGroupId}`,
-							reminderMessage
-						)
-						console.log(
-							`[${currentTimestamp}] ✅ Уведомление отправлено в Telegram`
-						)
-					} catch (error) {
-						console.error(
-							`[${currentTimestamp}] ❌ Ошибка при отправке уведомления:`,
-							error
-						)
-					}
-				}
-			}, (company?.managerResponse || 5) * 60 * 1000)
-
-			this.activeTimers.set(message.from, timer)
+			// После сохранения сообщения, проверяем рабочее время
+			const isWorkingHours = this.isWithinWorkingHours(company)
 			console.log(
-				`[${timestamp}] ⏳ Запущен таймер на ${company.managerResponse} минут для ${message.to} (чат ${message.from})`
+				`[${timestamp}] ⏰ Проверка рабочего времени: ${
+					isWorkingHours ? 'рабочее время' : 'вне рабочего времени'
+				}`
 			)
+
+			// Запускаем таймер только в рабочее время
+			if (isWorkingHours) {
+				// Логика с таймером остается
+				if (this.activeTimers.has(message.to)) {
+					console.log(
+						`[${timestamp}] 🔄 Перезапускаем таймер для ${message.to}`
+					)
+					clearTimeout(this.activeTimers.get(message.to))
+				}
+
+				// Отключаем таймер при отправке ответа
+				if (this.activeTimers.has(message.from)) {
+					console.log(`[${timestamp}] 🛑 Отключаем таймер для ${message.from}`)
+					clearTimeout(this.activeTimers.get(message.from))
+					this.activeTimers.delete(message.from)
+					console.log(`[${timestamp}] ✅ Таймер успешно отключен`)
+				}
+
+				// Запускаем новый таймер
+				const timer = setTimeout(async () => {
+					const currentTimestamp = new Date().toISOString()
+					console.log(
+						`[${currentTimestamp}] ⚠️ Время ответа истекло для ${message.to} (чат ${clientCleanPhoneNumber})`
+					)
+
+					if (company.telegramGroupId) {
+						try {
+							const reminderMessage = `⚠️ ВНИМАНИЕ! ⚠️\n\nВ WhatsApp-чате не ответили на сообщение в течение ${company.managerResponse} минут!\n\nСсылка на чат: https://wa.me/${clientCleanPhoneNumber}`
+
+							if (!this.telegramService) {
+								throw new Error('Telegram сервис не инициализирован')
+							}
+
+							const isConnected = await this.telegramService.isConnected()
+							if (!isConnected) {
+								await this.telegramService.initialize()
+							}
+
+							await this.telegramService.sendMessage(
+								`-${company.telegramGroupId}`,
+								reminderMessage
+							)
+							console.log(
+								`[${currentTimestamp}] ✅ Уведомление отправлено в Telegram`
+							)
+						} catch (error) {
+							console.error(
+								`[${currentTimestamp}] ❌ Ошибка при отправке уведомления:`,
+								error
+							)
+						}
+					}
+				}, (company?.managerResponse || 5) * 60 * 1000)
+
+				this.activeTimers.set(message.from, timer)
+				console.log(
+					`[${timestamp}] ⏳ Запущен таймер на ${company.managerResponse} минут для ${message.to} (чат ${message.from})`
+				)
+			} else {
+				console.log(
+					`[${timestamp}] ℹ️ Вне рабочего времени - таймер не запущен`
+				)
+			}
 		} catch (error) {
 			console.error(
 				`[${new Date().toISOString()}] ❌ Ошибка при обработке сообщения:`,
@@ -350,8 +425,16 @@ export class MessageMonitor {
 				return
 			}
 
-			// Отключаем таймер при отправке ответа
-			if (this.activeTimers.has(message.to)) {
+			// После сохранения сообщения, проверяем рабочее время
+			const isWorkingHours = this.isWithinWorkingHours(company)
+			console.log(
+				`[${timestamp}] ⏰ Проверка рабочего времени: ${
+					isWorkingHours ? 'рабочее время' : 'вне рабочего времени'
+				}`
+			)
+
+			// Отключаем таймер только в рабочее время
+			if (isWorkingHours && this.activeTimers.has(message.to)) {
 				console.log(`[${timestamp}] 🛑 Отключаем таймер для ${message.to}`)
 				clearTimeout(this.activeTimers.get(message.to))
 				this.activeTimers.delete(message.to)
