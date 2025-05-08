@@ -270,12 +270,25 @@ export class MessageMonitor {
 	public async handleOutgoingMessage(message: Message): Promise<void> {
 		try {
 			const timestamp = new Date().toISOString()
-			console.log(`[${timestamp}] 📤 Исходящее сообщение от клиента:`)
-			console.log(`[${timestamp}] 📝 Текст: "${message.body}"`)
-			console.log(`[${timestamp}] 👤 Получатель: ${message.to}`)
+			console.log(`[${timestamp}] 🚀 Начало обработки исходящего сообщения`)
+			console.log(`[${timestamp}] 📤 Данные сообщения:`, {
+				from: message.from,
+				to: message.to,
+				body: message.body,
+				fromMe: message.fromMe,
+				type: message.type,
+				isForwarded: message.isForwarded,
+				isStatus: message.isStatus,
+			})
 
+			// Очищаем номера телефонов
 			const cleanPhoneNumber = message.from.replace(/\D/g, '')
 			const clientCleanPhoneNumber = message.to.replace(/\D/g, '')
+			console.log(`[${timestamp}] 🔍 Очищенные номера:`, {
+				cleanPhoneNumber,
+				clientCleanPhoneNumber,
+			})
+
 			// Находим компанию по номеру телефона
 			const company = await CompanySettings.findOne({
 				phoneNumber: cleanPhoneNumber,
@@ -284,26 +297,25 @@ export class MessageMonitor {
 				console.log(
 					`[${timestamp}] ❌ Компания не найдена для номера: ${cleanPhoneNumber}`
 				)
-				return // Прерываем выполнение, если компания не найдена
+				return
 			}
 			console.log(`[${timestamp}] ✅ Найдена компания:`, company)
 
 			// Проверка на наличие чата в базе данных
 			let chat = await WhatsappChat.findOne({ chatId: clientCleanPhoneNumber })
+			console.log(`[${timestamp}] 🔍 Результат поиска чата:`, chat)
 
-			console.log(chat)
 			if (!chat) {
 				console.log(
 					`[${timestamp}] ❌ Чат с номером ${clientCleanPhoneNumber} не найден, создаем новый`
 				)
 
-				// Если чат не найден, создаем новый
 				try {
 					chat = new WhatsappChat({
 						companyId: company._id,
 						chatId: clientCleanPhoneNumber,
 					})
-					await chat.save() // Сохраняем новый чат
+					await chat.save()
 					console.log(
 						`[${timestamp}] 📝 Новый чат успешно сохранен для: ${clientCleanPhoneNumber}`
 					)
@@ -312,7 +324,7 @@ export class MessageMonitor {
 						`[${timestamp}] ❌ Ошибка при сохранении нового чата:`,
 						error
 					)
-					return // Прерываем выполнение, если не удалось сохранить чат
+					return
 				}
 			} else {
 				console.log(`[${timestamp}] ✅ Чат найден:`, chat)
@@ -320,22 +332,22 @@ export class MessageMonitor {
 
 			// Сохраняем сообщение
 			const whatsappMessage = new WhatsappMessage({
-				isEcho: message.fromMe,
+				isEcho: true, // Всегда true для исходящих сообщений
 				text: message.body,
 				whatsappChatId: chat._id,
 				companyId: company._id,
-				isClosed: false, // Сделка еще не закрыта
+				isClosed: false,
 			})
 
 			try {
-				await whatsappMessage.save() // Сохраняем сообщение в базе
+				await whatsappMessage.save()
 				console.log(`[${timestamp}] ✅ Сообщение сохранено:`, whatsappMessage)
 			} catch (error) {
 				console.error(
 					`[${timestamp}] ❌ Ошибка при сохранении сообщения:`,
 					error
 				)
-				return // Прерываем выполнение, если не удалось сохранить сообщение
+				return
 			}
 
 			// Отключаем таймер при отправке ответа

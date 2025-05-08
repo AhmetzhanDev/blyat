@@ -55,10 +55,8 @@ export const getOrCreateClient = (companyId: string): Client => {
 	const client = new Client({
 		authStrategy: new LocalAuth({
 			clientId: `company-${companyId}`,
-			// dataPath: path.join(process.cwd(), '.wwebjs_auth', `session-${userId}`)
 		}),
 		puppeteer: {
-			// headless: true,
 			args: [
 				'--no-sandbox',
 				'--disable-setuid-sandbox',
@@ -73,14 +71,36 @@ export const getOrCreateClient = (companyId: string): Client => {
 				'--disable-features=IsolateOrigins',
 				'--disable-site-isolation-trials',
 			],
-			// executablePath: process.platform === 'darwin'
-			//   ? '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'
-			//   : undefined,
-			// ignoreDefaultArgs: ['--disable-extensions'],
-			// handleSIGINT: false,
-			// handleSIGTERM: false,
-			// handleSIGHUP: false
 		},
+	})
+
+	// Добавляем обработчики сообщений сразу при создании клиента
+	client.on('message', async message => {
+		console.log(`[${new Date().toISOString()}] 📥 Входящее сообщение:`, {
+			from: message.from,
+			to: message.to,
+			body: message.body,
+			fromMe: message.fromMe,
+		})
+		await messageMonitor.handleMessage(message)
+	})
+
+	client.on('message_create', async message => {
+		console.log(`[${new Date().toISOString()}] 📤 Создание сообщения:`, {
+			from: message.from,
+			to: message.to,
+			body: message.body,
+			fromMe: message.fromMe,
+			type: message.type,
+		})
+
+		// Проверяем все возможные признаки исходящего сообщения
+		if (message.fromMe || message.isForwarded || message.isStatus) {
+			console.log(
+				`[${new Date().toISOString()}] 👤 Определено как исходящее сообщение`
+			)
+			await messageMonitor.handleOutgoingMessage(message)
+		}
 	})
 
 	return client
@@ -294,16 +314,6 @@ export const generateUserQR = async (
 				// } else {
 				//   console.error('[QR-DEBUG] Не найден socketId для userId:', userId);
 				// }
-			})
-
-			client.on('message', async message => {
-				await messageMonitor.handleMessage(message)
-			})
-
-			client.on('message_create', async message => {
-				if (message.fromMe) {
-					await messageMonitor.handleOutgoingMessage(message)
-				}
 			})
 
 			client.on('ready', async () => {
