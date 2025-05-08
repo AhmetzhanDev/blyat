@@ -192,8 +192,20 @@ mongoose
 	})
 	.then(async () => {
 		console.log(`[${new Date().toISOString()}] ✅ Подключено к MongoDB`)
+		console.log(
+			`[${new Date().toISOString()}] 📊 Статус MongoDB:`,
+			mongoose.connection.readyState
+		)
 		// Инициализируем админский клиент после подключения к БД
 		await initAdminClient()
+
+		// Инициализация WhatsApp клиентов после подключения к MongoDB
+		await initWhatsappClients(io).catch(error => {
+			console.error(
+				`[${new Date().toISOString()}] ❌ Ошибка при инициализации WhatsApp клиентов:`,
+				error
+			)
+		})
 	})
 	.catch(err => {
 		console.error(
@@ -306,12 +318,6 @@ httpServer.listen(PORT, async () => {
 		console.log(
 			`[${new Date().toISOString()}] ✅ Админский клиент WhatsApp готов к использованию`
 		)
-
-		// Инициализируем WhatsApp клиентов
-		console.log(
-			`[${new Date().toISOString()}] 🔄 Инициализация WhatsApp клиентов...`
-		)
-		await initWhatsappClients(io)
 
 		// Получаем экземпляр MessageMonitor
 		console.log(
