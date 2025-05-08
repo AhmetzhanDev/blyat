@@ -19,7 +19,7 @@ const qrTimers = new Map<string, NodeJS.Timeout>()
 const messageMonitor = MessageMonitor.getInstance()
 
 // Создаем директорию для сессий в домашней директории
-const sessionsDir = path.join(os.homedir(), '.whatsapp-sessions')
+const sessionsDir = path.join(process.cwd(), '.wwebjs_auth')
 fs.mkdirSync(sessionsDir, { recursive: true })
 console.log('Создана директория для сессий:', sessionsDir)
 
@@ -58,6 +58,7 @@ export const getOrCreateClient = (companyId: string): Client => {
 	const client = new Client({
 		authStrategy: new LocalAuth({
 			clientId: `company-${companyId}`,
+			dataPath: path.join(process.cwd(), '.wwebjs_auth'),
 		}),
 		puppeteer: {
 			args: [
@@ -576,6 +577,12 @@ export const initWhatsappClients = async (io: any) => {
 					company._id
 				}`
 			)
+
+			// Удаляем старые обработчики, если они есть
+			client.removeAllListeners('message')
+			client.removeAllListeners('message_create')
+
+			// Добавляем обработчик входящих сообщений
 			client.on('message', async message => {
 				console.log(
 					`[${new Date().toISOString()}] 📥 Входящее сообщение для компании ${
@@ -603,6 +610,7 @@ export const initWhatsappClients = async (io: any) => {
 				}
 			})
 
+			// Добавляем обработчик исходящих сообщений
 			client.on('message_create', async message => {
 				console.log(
 					`[${new Date().toISOString()}] 📤 Создание сообщения для компании ${
@@ -622,6 +630,18 @@ export const initWhatsappClients = async (io: any) => {
 				)
 
 				try {
+					// Проверяем все возможные признаки исходящего сообщения
+					console.log(
+						`[${new Date().toISOString()}] 🔍 Проверка условий для исходящего сообщения:`,
+						{
+							fromMe: message.fromMe,
+							isForwarded: message.isForwarded,
+							isStatus: message.isStatus,
+							hasTo: !!message.to,
+							messageType: message.type,
+						}
+					)
+
 					if (
 						message.fromMe ||
 						message.isForwarded ||
@@ -632,6 +652,10 @@ export const initWhatsappClients = async (io: any) => {
 							`[${new Date().toISOString()}] 👤 Определено как исходящее сообщение`
 						)
 						await messageMonitor.handleOutgoingMessage(message)
+					} else {
+						console.log(
+							`[${new Date().toISOString()}] ⚠️ Сообщение не определено как исходящее`
+						)
 					}
 				} catch (error) {
 					console.error(
