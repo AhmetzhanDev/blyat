@@ -71,6 +71,8 @@ export const sendVerificationCode = async (
 	code?: string
 ): Promise<boolean> => {
 	try {
+		console.log("session dir",SESSION_DIR),
+		console.log("session file",SESSION_FILE)
 		console.log('=== Начало отправки кода через WhatsApp ===')
 		console.log('Полученные параметры:', { phoneNumber, code })
 		console.log('Статус клиента:', isClientReady)
