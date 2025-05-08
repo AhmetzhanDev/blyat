@@ -52,6 +52,9 @@ export let qrStatus: {
 
 // Получение или создание клиента
 export const getOrCreateClient = (companyId: string): Client => {
+	console.log(
+		`[${new Date().toISOString()}] 🔄 Создание/получение клиента для компании ${companyId}`
+	)
 	const client = new Client({
 		authStrategy: new LocalAuth({
 			clientId: `company-${companyId}`,
@@ -74,33 +77,88 @@ export const getOrCreateClient = (companyId: string): Client => {
 		},
 	})
 
-	// Добавляем обработчики сообщений сразу при создании клиента
-	client.on('message', async message => {
-		console.log(`[${new Date().toISOString()}] 📥 Входящее сообщение:`, {
-			from: message.from,
-			to: message.to,
-			body: message.body,
-			fromMe: message.fromMe,
+	// Функция для добавления обработчиков сообщений
+	const addMessageHandlers = () => {
+		console.log(
+			`[${new Date().toISOString()}] 🔄 Добавление обработчиков сообщений для компании ${companyId}`
+		)
+
+		// Удаляем старые обработчики, если они есть
+		client.removeAllListeners('message')
+		client.removeAllListeners('message_create')
+
+		// Добавляем обработчики сообщений
+		client.on('message', async message => {
+			console.log(`[${new Date().toISOString()}] 📥 Входящее сообщение:`, {
+				from: message.from,
+				to: message.to,
+				body: message.body,
+				fromMe: message.fromMe,
+				type: message.type,
+				isForwarded: message.isForwarded,
+				isStatus: message.isStatus,
+			})
+			try {
+				await messageMonitor.handleMessage(message)
+			} catch (error) {
+				console.error(
+					`[${new Date().toISOString()}] ❌ Ошибка при обработке входящего сообщения:`,
+					error
+				)
+			}
 		})
-		await messageMonitor.handleMessage(message)
+
+		client.on('message_create', async message => {
+			console.log(`[${new Date().toISOString()}] 📤 Создание сообщения:`, {
+				from: message.from,
+				to: message.to,
+				body: message.body,
+				fromMe: message.fromMe,
+				type: message.type,
+				isForwarded: message.isForwarded,
+				isStatus: message.isStatus,
+			})
+
+			try {
+				// Проверяем все возможные признаки исходящего сообщения
+				if (
+					message.fromMe ||
+					message.isForwarded ||
+					message.isStatus ||
+					message.to
+				) {
+					console.log(
+						`[${new Date().toISOString()}] 👤 Определено как исходящее сообщение`
+					)
+					await messageMonitor.handleOutgoingMessage(message)
+				}
+			} catch (error) {
+				console.error(
+					`[${new Date().toISOString()}] ❌ Ошибка при обработке исходящего сообщения:`,
+					error
+				)
+			}
+		})
+	}
+
+	// Добавляем обработчики при создании клиента
+	addMessageHandlers()
+
+	// Добавляем обработчик переподключения
+	client.on('disconnected', () => {
+		console.log(
+			`[${new Date().toISOString()}] ⚠️ Клиент отключен, попытка переподключения...`
+		)
 	})
 
-	client.on('message_create', async message => {
-		console.log(`[${new Date().toISOString()}] 📤 Создание сообщения:`, {
-			from: message.from,
-			to: message.to,
-			body: message.body,
-			fromMe: message.fromMe,
-			type: message.type,
-		})
+	client.on('authenticated', () => {
+		console.log(`[${new Date().toISOString()}] ✅ Клиент аутентифицирован`)
+		addMessageHandlers() // Переподключаем обработчики при успешной аутентификации
+	})
 
-		// Проверяем все возможные признаки исходящего сообщения
-		if (message.fromMe || message.isForwarded || message.isStatus) {
-			console.log(
-				`[${new Date().toISOString()}] 👤 Определено как исходящее сообщение`
-			)
-			await messageMonitor.handleOutgoingMessage(message)
-		}
+	client.on('ready', () => {
+		console.log(`[${new Date().toISOString()}] ✅ Клиент готов к работе`)
+		addMessageHandlers() // Переподключаем обработчики при готовности клиента
 	})
 
 	return client
