@@ -21,12 +21,18 @@ const messageMonitor = MessageMonitor.getInstance()
 // Создаем директорию для сессий в домашней директории
 const sessionsDir = path.join(process.cwd(), '.wwebjs_auth')
 fs.mkdirSync(sessionsDir, { recursive: true })
-console.log('Создана директория для сессий:', sessionsDir)
+console.log(`[${new Date().toISOString()}] 📁 Директория сессий:`, sessionsDir)
 
-// Создаем директорию для .wwebjs_auth
-// const wwebjsDir = path.join(process.cwd(), '.wwebjs_auth');
-// fs.mkdirSync(wwebjsDir, { recursive: true });
-// console.log('Создана директория .wwebjs_auth:', wwebjsDir);
+// Проверяем наличие сессий
+const checkSessions = () => {
+	if (fs.existsSync(sessionsDir)) {
+		const sessions = fs.readdirSync(sessionsDir)
+		console.log(`[${new Date().toISOString()}] 📂 Найденные сессии:`, sessions)
+		return sessions
+	}
+	console.log(`[${new Date().toISOString()}] ⚠️ Директория сессий пуста`)
+	return []
+}
 
 // Очистка файлов блокировки
 const clearLockFiles = () => {
@@ -55,10 +61,19 @@ export const getOrCreateClient = (companyId: string): Client => {
 	console.log(
 		`[${new Date().toISOString()}] 🔄 Создание/получение клиента для компании ${companyId}`
 	)
+
+	// Проверяем наличие сессии для этой компании
+	const sessionPath = path.join(sessionsDir, `session-company-${companyId}`)
+	const hasSession = fs.existsSync(sessionPath)
+	console.log(
+		`[${new Date().toISOString()}] 🔍 Проверка сессии для компании ${companyId}:`,
+		hasSession ? 'найдена' : 'не найдена'
+	)
+
 	const client = new Client({
 		authStrategy: new LocalAuth({
 			clientId: `company-${companyId}`,
-			dataPath: path.join(process.cwd(), '.wwebjs_auth'),
+			dataPath: sessionsDir,
 		}),
 		puppeteer: {
 			args: [
@@ -76,6 +91,17 @@ export const getOrCreateClient = (companyId: string): Client => {
 				'--disable-site-isolation-trials',
 			],
 		},
+	})
+
+	// Добавляем обработчик аутентификации
+	client.on('authenticated', () => {
+		console.log(
+			`[${new Date().toISOString()}] ✅ Клиент аутентифицирован для компании ${companyId}`
+		)
+		console.log(
+			`[${new Date().toISOString()}] 📁 Путь к сессии:`,
+			path.join(sessionsDir, `session-company-${companyId}`)
+		)
 	})
 
 	// Функция для добавления обработчиков сообщений
@@ -169,11 +195,6 @@ export const getOrCreateClient = (companyId: string): Client => {
 		console.log(
 			`[${new Date().toISOString()}] ⚠️ Клиент отключен, попытка переподключения...`
 		)
-	})
-
-	client.on('authenticated', () => {
-		console.log(`[${new Date().toISOString()}] ✅ Клиент аутентифицирован`)
-		addMessageHandlers() // Переподключаем обработчики при успешной аутентификации
 	})
 
 	client.on('ready', () => {
@@ -556,6 +577,13 @@ export const initWhatsappClients = async (io: any) => {
 		console.log(
 			`[${new Date().toISOString()}] 🔄 Начало инициализации существующих WhatsApp клиентов`
 		)
+
+		// Проверяем наличие сессий перед инициализацией
+		const sessions = checkSessions()
+		console.log(
+			`[${new Date().toISOString()}] 📊 Найдено ${sessions.length} сессий`
+		)
+
 		const companies = await CompanySettings.find({ whatsappAuthorized: true })
 		console.log(
 			`[${new Date().toISOString()}] 📊 Найдено ${
