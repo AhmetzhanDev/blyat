@@ -8,13 +8,13 @@ import { CronJob } from 'cron/dist'
 
 //Получает последние 10 сообщений за последние 24 часа
 export const initCron = (messageMonitor: MessageMonitor) => {
-	new CronJob('* 19 * * *', async () => {
+	new CronJob('0 19 * * *', async () => {
 		await getNotClosedChats()
 	}).start()
 
 	//Отправляет сообщение о не закрытых чатах в группу Telegram компании
 
-	new CronJob('* 10 * * *', async () => {
+	new CronJob('0 10 * * *', async () => {
 		await sendNotClosedChatsMessage(messageMonitor)
 	}).start()
 
