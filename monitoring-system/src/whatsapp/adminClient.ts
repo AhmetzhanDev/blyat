@@ -105,7 +105,7 @@ export const sendVerificationCode = async (
 				console.log('seesiuo','Админский клиент уже инициализирован и подключен');
 			} else {
 				console.log('seesiuo','Админский клиент есть, но не подключен. Переинициализация...');
-				isClientReady = false;
+				// isClientReady = false;
 			}
 		}
 		
