@@ -588,7 +588,8 @@ export const initWhatsappClients = async (io: any) => {
 		// Проверяем наличие сессий перед инициализацией
 		const sessions = checkSessions()
 		console.log(
-			`[${new Date().toISOString()}] 📊 Найдено ${sessions.length} сессий`
+			`[${new Date().toISOString()}] 📊 Найдено ${sessions.length} сессий:`,
+			sessions
 		)
 
 		const companies = await CompanySettings.find({ whatsappAuthorized: true })
@@ -724,18 +725,50 @@ export const initWhatsappClients = async (io: any) => {
 				})
 			})
 
+			// Добавляем обработчик аутентификации
+			client.on('authenticated', () => {
+				console.log(
+					`[${new Date().toISOString()}] ✅ Клиент аутентифицирован для компании ${
+						company._id
+					}`
+				)
+				console.log(
+					`[${new Date().toISOString()}] 📁 Путь к сессии:`,
+					path.join(sessionsDir, `session-company-${company._id}`)
+				)
+			})
+
+			// Добавляем обработчик ошибок аутентификации
+			client.on('auth_failure', error => {
+				console.error(
+					`[${new Date().toISOString()}] ❌ Ошибка аутентификации для компании ${
+						company._id
+					}:`,
+					error
+				)
+			})
+
 			// Инициализируем клиент
 			console.log(
 				`[${new Date().toISOString()}] 🔄 Начало инициализации клиента для компании ${
 					company._id
 				}`
 			)
-			await client.initialize()
-			console.log(
-				`[${new Date().toISOString()}] ✅ Клиент успешно инициализирован для компании ${
-					company._id
-				}`
-			)
+			try {
+				await client.initialize()
+				console.log(
+					`[${new Date().toISOString()}] ✅ Клиент успешно инициализирован для компании ${
+						company._id
+					}`
+				)
+			} catch (error) {
+				console.error(
+					`[${new Date().toISOString()}] ❌ Ошибка при инициализации клиента для компании ${
+						company._id
+					}:`,
+					error
+				)
+			}
 		}
 	} catch (error) {
 		console.error(
