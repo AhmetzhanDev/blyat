@@ -99,15 +99,15 @@ export const sendVerificationCode = async (
 			return false
 		}
 
-		if (adminClient && isClientReady) {
-			const currentState = await adminClient.getState();
-			if (currentState === 'CONNECTED') {
-				console.log('seesiuo','Админский клиент уже инициализирован и подключен');
-			} else {
-				console.log('seesiuo','Админский клиент есть, но не подключен. Переинициализация...');
-				isClientReady = false;
-			}
-		}
+		// if (adminClient && isClientReady) {
+		// 	const currentState = await adminClient.getState();
+		// 	if (currentState === 'CONNECTED') {
+		// 		console.log('seesiuo','Админский клиент уже инициализирован и подключен');
+		// 	} else {
+		// 		console.log('seesiuo','Админский клиент есть, но не подключен. Переинициализация...');
+		// 		isClientReady = false;
+		// 	}
+		// }
 		
 
 		// Если клиент не готов, пробуем переподключиться
