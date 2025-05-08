@@ -70,9 +70,16 @@ export const getOrCreateClient = (companyId: string): Client => {
 		hasSession ? 'найдена' : 'не найдена'
 	)
 
+	// Если это админский клиент, используем существующую сессию
+	const clientId =
+		companyId === 'admin' ? 'session-admin' : `company-${companyId}`
+	console.log(
+		`[${new Date().toISOString()}] 🔑 Используем clientId: ${clientId}`
+	)
+
 	const client = new Client({
 		authStrategy: new LocalAuth({
-			clientId: `company-${companyId}`,
+			clientId: clientId,
 			dataPath: sessionsDir,
 		}),
 		puppeteer: {
@@ -96,11 +103,11 @@ export const getOrCreateClient = (companyId: string): Client => {
 	// Добавляем обработчик аутентификации
 	client.on('authenticated', () => {
 		console.log(
-			`[${new Date().toISOString()}] ✅ Клиент аутентифицирован для компании ${companyId}`
+			`[${new Date().toISOString()}] ✅ Клиент аутентифицирован для ${clientId}`
 		)
 		console.log(
 			`[${new Date().toISOString()}] 📁 Путь к сессии:`,
-			path.join(sessionsDir, `session-company-${companyId}`)
+			path.join(sessionsDir, clientId)
 		)
 	})
 
@@ -762,4 +769,45 @@ export const initWhatsAppClient = (io: any) => {
 			)
 		})
 	})
+}
+
+// Функция для инициализации админского клиента
+export const initAdminClient = async (): Promise<Client> => {
+	console.log(
+		`[${new Date().toISOString()}] 🔄 Инициализация админского клиента...`
+	)
+
+	// Проверяем наличие сессии админа
+	const adminSessionPath = path.join(sessionsDir, 'session-admin')
+	const hasAdminSession = fs.existsSync(adminSessionPath)
+	console.log(
+		`[${new Date().toISOString()}] �� Проверка сессии админа:`,
+		hasAdminSession ? 'найдена' : 'не найдена'
+	)
+
+	const client = getOrCreateClient('admin')
+
+	// Добавляем обработчики сообщений для админа
+	client.on('message', async message => {
+		console.log(
+			`[${new Date().toISOString()}] 📥 Входящее сообщение для админа:`,
+			{
+				from: message.from,
+				to: message.to,
+				body: message.body,
+				fromMe: message.fromMe,
+				type: message.type,
+			}
+		)
+		try {
+			await messageMonitor.handleAdminMessage(message)
+		} catch (error) {
+			console.error(
+				`[${new Date().toISOString()}] ❌ Ошибка при обработке сообщения админа:`,
+				error
+			)
+		}
+	})
+
+	return client
 }
