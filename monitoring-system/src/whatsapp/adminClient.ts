@@ -99,6 +99,17 @@ export const sendVerificationCode = async (
 			return false
 		}
 
+		if (adminClient && isClientReady) {
+			const currentState = await adminClient.getState();
+			if (currentState === 'CONNECTED') {
+				console.log('seesiuo','Админский клиент уже инициализирован и подключен');
+			} else {
+				console.log('seesiuo','Админский клиент есть, но не подключен. Переинициализация...');
+				isClientReady = false;
+			}
+		}
+		
+
 		// Если клиент не готов, пробуем переподключиться
 		if (!adminClient || !isClientReady) {
 			console.log('Попытка переподключения клиента...');
@@ -122,6 +133,7 @@ export const sendVerificationCode = async (
 			}
 		}
 		
+
 
 		// Находим пользователя в базе только для проверки его существования
 		const user = await UserModel.findOne({ phoneNumber })
