@@ -366,11 +366,11 @@ export const initAdminClient = async (): Promise<void> => {
 		})
 
 		// Исходящие
-		// adminClient.on('message_create', async (message) => {
-		//   if (message.fromMe) {
-		//     await messageMonitor.handleOutgoingMessage(message);
-		//   }
-		// });
+		adminClient.on('message_create', async (message) => {
+		  if (message.fromMe) {
+		    await messageMonitor.handleOutgoingMessage(message);
+		  }
+		});
 
 		// Инициализируем клиент
 		console.log('Инициализация админского клиента...')
