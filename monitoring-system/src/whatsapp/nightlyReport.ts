@@ -248,9 +248,12 @@ export const initNightlyReportCron = (messageMonitor: MessageMonitor) => {
 					}
 				},
 				null,
-				true, // запускаем сразу
-				'Asia/Almaty' // timezone
+				false,
+				'Asia/Almaty'
 			)
+
+			// Запускаем крон
+			job.start()
 
 			// Проверяем, что крон создался
 			if (!job) {
