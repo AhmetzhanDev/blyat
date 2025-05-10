@@ -68,6 +68,17 @@ export const initNightlyReportCron = (messageMonitor: MessageMonitor) => {
 							company.nameCompany
 						}`
 					)
+					console.log(
+						`[${new Date().toISOString()}] 🔍 Проверка данных компании:`,
+						{
+							id: company._id,
+							name: company.nameCompany,
+							phoneNumber: company.phoneNumber,
+							telegramGroupId: company.telegramGroupId,
+							working_hours_start: company.working_hours_start,
+							working_hours_end: company.working_hours_end,
+						}
+					)
 
 					try {
 						// Конвертируем рабочее время в UTC
@@ -78,6 +89,13 @@ export const initNightlyReportCron = (messageMonitor: MessageMonitor) => {
 							.working_hours_end!.split(':')
 							.map(Number)
 
+						console.log(`[${new Date().toISOString()}] ⏰ Рабочее время:`, {
+							workStartHours,
+							workStartMinutes,
+							workEndHours,
+							workEndMinutes,
+						})
+
 						// Рассчитываем период для отчета
 						const now = new Date()
 						const almatyTime = toZonedTime(now, 'Asia/Almaty')
@@ -85,6 +103,13 @@ export const initNightlyReportCron = (messageMonitor: MessageMonitor) => {
 						// Конвертируем рабочее время в UTC (вычитаем 5 часов для Алматы)
 						const workStartUTC = workStartHours - 5
 						const workEndUTC = workEndHours - 5
+
+						console.log(`[${new Date().toISOString()}] ⏰ UTC время:`, {
+							workStartUTC,
+							workEndUTC,
+							currentTime: now.toISOString(),
+							almatyTime: almatyTime.toISOString(),
+						})
 
 						// Конец периода - начало текущего рабочего дня
 						const reportEnd = new Date(almatyTime)
@@ -246,6 +271,13 @@ export const initNightlyReportCron = (messageMonitor: MessageMonitor) => {
 							`[${new Date().toISOString()}] ❌ Ошибка при формировании ночного отчета:`,
 							error
 						)
+						if (error instanceof Error) {
+							console.error(
+								`[${new Date().toISOString()}] ❌ Детали ошибки:`,
+								error.message,
+								error.stack
+							)
+						}
 					}
 				},
 				null,
@@ -256,14 +288,13 @@ export const initNightlyReportCron = (messageMonitor: MessageMonitor) => {
 			// Запускаем крон
 			job.start()
 
-			console.log(
-				`[${new Date().toISOString()}] ✅ Крон для ночного отчета компании ${
-					company.nameCompany
-				} запущен`
-			)
-			console.log(
-				`[${new Date().toISOString()}] ⏰ Следующий запуск в ${formattedHours}:${formattedMinutes} (Алматы)`
-			)
+			// Проверяем следующую дату запуска
+			const nextRun = job.nextDate()
+			console.log(`[${new Date().toISOString()}] ⏰ Следующий запуск:`, {
+				nextRun: nextRun?.toString(),
+				cronExpression,
+				companyName: company.nameCompany,
+			})
 
 			return job
 		} catch (error) {
