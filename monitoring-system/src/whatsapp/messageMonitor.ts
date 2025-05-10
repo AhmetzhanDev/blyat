@@ -141,6 +141,14 @@ export class MessageMonitor {
 				return
 			}
 
+			// Пропускаем сообщения из групп (проверяем по формату ID чата)
+			if (message.from.endsWith('@g.us')) {
+				console.log(
+					`[${timestamp}] 👥 Пропускаем сообщение из группы: ${message.from}`
+				)
+				return
+			}
+
 			if (message.from === 'status@broadcast') {
 				console.log(`[${timestamp}] 📱 Получено статусное сообщение`)
 				return
@@ -354,7 +362,16 @@ export class MessageMonitor {
 				type: message.type,
 				isForwarded: message.isForwarded,
 				isStatus: message.isStatus,
+				isGroupChat: message.to.endsWith('@g.us'),
 			})
+
+			// Пропускаем сообщения в группы (проверяем по формату ID чата)
+			if (message.to.endsWith('@g.us')) {
+				console.log(
+					`[${timestamp}] 👥 Пропускаем сообщение в группу: ${message.to}`
+				)
+				return
+			}
 
 			// Очищаем номера телефонов
 			const cleanPhoneNumber = message.from.replace(/\D/g, '')
