@@ -461,3 +461,125 @@ export const initAdminClient = async (): Promise<void> => {
 		throw error
 	}
 }
+
+// Добавляем функцию для автоматической инициализации админского клиента
+export const initializeAdminClient = async (): Promise<void> => {
+	try {
+		console.log(
+			'[ADMIN] Начало автоматической инициализации админского клиента'
+		)
+
+		// Проверяем наличие существующей сессии
+		const hasExistingSession = checkExistingSession()
+		console.log('[ADMIN] Наличие существующей сессии:', hasExistingSession)
+
+		// Если клиент уже существует и готов, не инициализируем заново
+		if (adminClient && isClientReady) {
+			console.log(
+				'[ADMIN] Админский клиент уже инициализирован и готов к работе'
+			)
+			return
+		}
+
+		// Если клиент существует, но не готов, уничтожаем его
+		if (adminClient) {
+			console.log('[ADMIN] Уничтожаем существующий клиент...')
+			await adminClient.destroy()
+			adminClient = null
+			isClientReady = false
+		}
+
+		// Создаем директорию для сессии только если её нет
+		if (!fs.existsSync(SESSION_DIR)) {
+			fs.mkdirSync(SESSION_DIR, { recursive: true })
+			console.log(
+				'[ADMIN] Создана директория для админской сессии:',
+				SESSION_DIR
+			)
+		}
+
+		// Создаем новый клиент
+		console.log('[ADMIN] Создаем новый клиент')
+		adminClient = new Client({
+			authStrategy: new LocalAuth({
+				clientId: ADMIN_ID,
+				dataPath: path.join(process.cwd(), '.wwebjs_auth'),
+			}),
+			puppeteer: {
+				args: [
+					'--no-sandbox',
+					'--disable-setuid-sandbox',
+					'--disable-dev-shm-usage',
+					'--disable-accelerated-2d-canvas',
+					'--no-first-run',
+					'--no-zygote',
+					'--disable-gpu',
+					'--disable-extensions',
+					'--disable-software-rasterizer',
+					'--disable-features=site-per-process',
+					'--disable-features=IsolateOrigins',
+					'--disable-site-isolation-trials',
+				],
+			},
+		})
+
+		// Добавляем обработчики событий
+		adminClient.on('qr', async (qr: string) => {
+			try {
+				console.log('[ADMIN] Получен QR-код для админа')
+				console.log('\n=== АДМИНСКИЙ QR-КОД ===')
+				console.log(
+					'Отсканируйте этот QR-код для подключения админского аккаунта'
+				)
+				qrcodeTerminal.generate(qr, { small: true })
+				console.log('========================\n')
+
+				// Отправляем QR-код через сокет
+				io.emit('admin:qr', { qr })
+			} catch (error: any) {
+				console.error('[ADMIN] Ошибка при генерации админского QR-кода:', error)
+			}
+		})
+
+		adminClient.on('ready', () => {
+			console.log('[ADMIN] Админский клиент готов к использованию')
+			isClientReady = true
+			io.emit('admin:ready', {
+				status: 'ready',
+				timestamp: Date.now(),
+			})
+		})
+
+		// Инициализируем клиент с повторными попытками
+		let attempts = 0
+		const maxAttempts = 3
+
+		while (attempts < maxAttempts) {
+			try {
+				attempts++
+				console.log(
+					`[ADMIN] Попытка инициализации клиента ${attempts}/${maxAttempts}...`
+				)
+				await adminClient.initialize()
+				console.log('[ADMIN] Админский клиент успешно инициализирован')
+				break
+			} catch (error) {
+				console.error(
+					`[ADMIN] Ошибка при инициализации клиента (попытка ${attempts}/${maxAttempts}):`,
+					error
+				)
+				if (attempts === maxAttempts) {
+					throw error
+				}
+				// Ждем перед следующей попыткой
+				await new Promise(resolve => setTimeout(resolve, 5000))
+			}
+		}
+	} catch (error) {
+		console.error(
+			'[ADMIN] Критическая ошибка при инициализации админского клиента:',
+			error
+		)
+		throw error
+	}
+}

@@ -275,6 +275,15 @@ httpServer.listen(PORT, async () => {
 			`[${new Date().toISOString()}] ✅ TelegramService успешно инициализирован`
 		)
 
+		// Инициализируем админский клиент WhatsApp
+		console.log(
+			`[${new Date().toISOString()}] 🔄 Инициализация админского клиента WhatsApp...`
+		)
+		await initAdminClient()
+		console.log(
+			`[${new Date().toISOString()}] ✅ Админский клиент WhatsApp инициализирован`
+		)
+
 		// Ждем подключения к MongoDB
 		if (mongoose.connection.readyState !== 1) {
 			console.log(
