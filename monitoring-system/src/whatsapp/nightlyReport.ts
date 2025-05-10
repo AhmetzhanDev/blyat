@@ -11,9 +11,9 @@ import { TelegramService } from '../telegram/telegramClient'
 interface IWhatsappChat {
 	_id: Types.ObjectId
 	companyId: Types.ObjectId
-	phoneNumber: string
-	isResponded: boolean
-	firstResponseTime?: Date
+	chatId: string
+	isClosed: boolean
+	sendMessage: boolean
 	createdAt: Date
 }
 
@@ -206,11 +206,18 @@ export class NightlyReportManager {
 							}`
 						)
 
-						// Считаем статистику по ответам
-						const respondedChats = chats.filter(
-							(chat: any) => chat.isResponded
-						).length
-						const unansweredChats = chats.length - respondedChats
+						// Считаем непросмотренные чаты по той же логике, что и в messageMonitor
+						const unansweredChats = chats.filter((chat: any) => {
+							const chatMessages = messages.filter(
+								m => m.whatsappChatId.toString() === chat._id.toString()
+							)
+							return (
+								chatMessages.length > 0 && !chatMessages.some(m => m.isEcho)
+							)
+						}).length
+
+						// Считаем отвеченные чаты как общее количество минус неотвеченные
+						const respondedChats = chats.length - unansweredChats
 
 						// Считаем среднее время ответа
 						let totalResponseTime = 0
@@ -234,8 +241,15 @@ export class NightlyReportManager {
 
 						// Формируем ссылки на чаты
 						const chatLinks = chats
-							.filter((chat: any) => !chat.isResponded)
-							.map((chat: any) => `https://wa.me/${chat.phoneNumber}`)
+							.filter((chat: any) => {
+								const chatMessages = messages.filter(
+									m => m.whatsappChatId.toString() === chat._id.toString()
+								)
+								return (
+									chatMessages.length > 0 && !chatMessages.some(m => m.isEcho)
+								)
+							})
+							.map((chat: any) => `https://wa.me/${chat.chatId}`)
 							.join('\n')
 
 						// Формируем отчет
