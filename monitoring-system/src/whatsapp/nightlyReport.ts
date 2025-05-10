@@ -77,6 +77,8 @@ export const initNightlyReportCron = (messageMonitor: MessageMonitor) => {
 				scheduledTime: format(scheduledTimeUTC, 'HH:mm:ss'),
 				shouldRunToday,
 				timezone: 'UTC',
+				almatyTime: format(almatyTime, 'HH:mm:ss'),
+				almatyScheduledTime: format(scheduledTime, 'HH:mm:ss'),
 			})
 
 			const job = new CronJob(
