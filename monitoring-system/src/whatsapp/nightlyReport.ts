@@ -60,6 +60,24 @@ export const initNightlyReportCron = (messageMonitor: MessageMonitor) => {
 				}
 			)
 
+			// Проверяем, не пора ли запустить отчет сейчас
+			const now = new Date()
+			const almatyTime = toZonedTime(now, 'Asia/Almaty')
+			const [currentHours, currentMinutes] = [
+				almatyTime.getHours(),
+				almatyTime.getMinutes(),
+			]
+
+			const shouldRunNow =
+				currentHours < reportHours ||
+				(currentHours === reportHours && currentMinutes < reportMinutes)
+
+			console.log(`[${new Date().toISOString()}] ⏰ Проверка времени:`, {
+				currentTime: `${currentHours}:${currentMinutes}`,
+				reportTime: `${reportHours}:${reportMinutes}`,
+				shouldRunNow,
+			})
+
 			const job = new CronJob(
 				cronExpression,
 				async () => {
@@ -288,12 +306,23 @@ export const initNightlyReportCron = (messageMonitor: MessageMonitor) => {
 			// Запускаем крон
 			job.start()
 
+			// Если время еще не наступило, запускаем отчет сразу
+			if (shouldRunNow) {
+				console.log(
+					`[${new Date().toISOString()}] ⚡️ Запуск отчета немедленно для компании ${
+						company.nameCompany
+					}`
+				)
+				job.fireOnTick()
+			}
+
 			// Проверяем следующую дату запуска
 			const nextRun = job.nextDate()
 			console.log(`[${new Date().toISOString()}] ⏰ Следующий запуск:`, {
 				nextRun: nextRun?.toString(),
 				cronExpression,
 				companyName: company.nameCompany,
+				shouldRunNow,
 			})
 
 			return job
