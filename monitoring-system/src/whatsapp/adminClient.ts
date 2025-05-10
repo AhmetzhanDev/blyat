@@ -11,8 +11,17 @@ import { TelegramService } from '../telegram/telegramClient'
 import { MessageMonitor } from './messageMonitor'
 
 const ADMIN_ID = 'admin'
-const SESSION_DIR = path.join(process.cwd(), '.wwebjs_auth', 'session-admin')
-const SESSION_FILE = path.join(SESSION_DIR, 'session-data.json')
+const SESSION_DIR = path.join(process.cwd(), '.wwebjs_auth', 'Default')
+const SESSION_SUBDIRS = [
+	'Local Storage',
+	'Service Worker',
+	'Session Storage',
+	'Web Storage',
+	'IndexedDB',
+	'Cache',
+	'GPUCache',
+	'Code Cache',
+]
 let adminClient: Client | null = null
 let isClientReady = false
 
@@ -30,17 +39,32 @@ interface SessionData {
 // Проверка существующей сессии
 const checkExistingSession = (): boolean => {
 	try {
-		if (fs.existsSync(SESSION_FILE)) {
-			const sessionData = fs.readFileSync(SESSION_FILE, 'utf-8')
-			if (sessionData) {
-				const parsedData: SessionData = JSON.parse(sessionData)
-				return !!(
-					parsedData.WABrowserId &&
-					parsedData.WASecretBundle &&
-					parsedData.WAToken1 &&
-					parsedData.WAToken2
-				)
+		if (fs.existsSync(SESSION_DIR)) {
+			// Проверяем наличие всех необходимых поддиректорий
+			const hasAllSubdirs = SESSION_SUBDIRS.every(subdir =>
+				fs.existsSync(path.join(SESSION_DIR, subdir))
+			)
+
+			if (!hasAllSubdirs) {
+				console.log('Отсутствуют некоторые поддиректории сессии')
+				return false
 			}
+
+			// Проверяем наличие файлов в Local Storage
+			const localStorageDir = path.join(SESSION_DIR, 'Local Storage')
+			if (fs.existsSync(localStorageDir)) {
+				const files = fs.readdirSync(localStorageDir)
+				const hasRequiredFiles = files.some(
+					file =>
+						file.includes('leveldb') ||
+						file.includes('000003.log') ||
+						file.includes('CURRENT') ||
+						file.includes('LOCK') ||
+						file.includes('LOG')
+				)
+				return hasRequiredFiles
+			}
+			return false
 		}
 		return false
 	} catch (error) {
@@ -52,14 +76,38 @@ const checkExistingSession = (): boolean => {
 // Сохранение сессии
 const saveSession = async (sessionData: any): Promise<void> => {
 	try {
-		// Создаем директорию, если её нет
+		// Создаем основную директорию сессии
 		if (!fs.existsSync(SESSION_DIR)) {
 			fs.mkdirSync(SESSION_DIR, { recursive: true })
 		}
 
-		// Сохраняем данные сессии
-		fs.writeFileSync(SESSION_FILE, JSON.stringify(sessionData, null, 2))
-		console.log('Сессия успешно сохранена')
+		// Создаем все необходимые поддиректории
+		for (const subdir of SESSION_SUBDIRS) {
+			const subdirPath = path.join(SESSION_DIR, subdir)
+			if (!fs.existsSync(subdirPath)) {
+				fs.mkdirSync(subdirPath, { recursive: true })
+			}
+		}
+
+		// Сохраняем данные сессии в соответствующие директории
+		if (sessionData.localStorage) {
+			const localStorageDir = path.join(SESSION_DIR, 'Local Storage')
+			for (const [key, value] of Object.entries(sessionData.localStorage)) {
+				const filePath = path.join(localStorageDir, key)
+				fs.writeFileSync(filePath, value as string)
+			}
+		}
+
+		if (sessionData.serviceWorker) {
+			const serviceWorkerDir = path.join(SESSION_DIR, 'Service Worker')
+			for (const [key, value] of Object.entries(sessionData.serviceWorker)) {
+				const filePath = path.join(serviceWorkerDir, key)
+				fs.writeFileSync(filePath, value as string)
+			}
+		}
+
+		// Аналогично для других типов хранилищ
+		console.log('Сессия успешно сохранена во все необходимые директории')
 	} catch (error) {
 		console.error('Ошибка при сохранении сессии:', error)
 	}
@@ -93,7 +141,7 @@ export const sendVerificationCode = async (
 			await initAdminClient()
 
 			// Ждем некоторое время для инициализации
-			await new Promise(resolve => setTimeout(resolve, 5000))
+			await new Promise(resolve => setTimeout(resolve, 30000))
 
 			if (!isClientReady || !adminClient) {
 				console.log('Не удалось переподключить клиент')
@@ -108,7 +156,7 @@ export const sendVerificationCode = async (
 		if (sessionState !== 'CONNECTED') {
 			console.log('Сессия не активна, пробуем переподключиться...')
 			await initAdminClient()
-			await new Promise(resolve => setTimeout(resolve, 5000))
+			await new Promise(resolve => setTimeout(resolve, 30000))
 
 			const newSessionState = await adminClient?.getState()
 			if (newSessionState !== 'CONNECTED') {
@@ -191,7 +239,7 @@ export const sendVerificationCode = async (
 					) {
 						console.log('Обнаружена ошибка сессии, пробуем переподключиться...')
 						await initAdminClient()
-						await new Promise(resolve => setTimeout(resolve, 5000))
+						await new Promise(resolve => setTimeout(resolve, 30000))
 
 						// Проверяем состояние сессии после переподключения
 						const newSessionState = await adminClient?.getState()
@@ -228,11 +276,9 @@ export const initAdminClient = async (): Promise<void> => {
 	try {
 		console.log('Начало инициализации админского клиента')
 
-		// Создаем директорию для сессии, если её нет
-		// if (!fs.existsSync(SESSION_DIR)) {
-		// fs.mkdirSync(SESSION_DIR, { recursive: true });
-		// console.log('Создана директория для админской сессии:', SESSION_DIR);
-		// }
+		// Проверяем наличие существующей сессии
+		const hasExistingSession = checkExistingSession()
+		console.log('Наличие существующей сессии:', hasExistingSession)
 
 		// Если клиент уже существует и готов, не инициализируем заново
 		if (adminClient && isClientReady) {
@@ -240,24 +286,32 @@ export const initAdminClient = async (): Promise<void> => {
 			return
 		}
 
-		// Если есть существующая сессия, пробуем её использовать
+		// Создаем директорию для сессии только если её нет
+		if (!fs.existsSync(SESSION_DIR)) {
+			fs.mkdirSync(SESSION_DIR, { recursive: true })
+			console.log('Создана директория для админской сессии:', SESSION_DIR)
+		}
 
 		adminClient = new Client({
 			authStrategy: new LocalAuth({
 				clientId: ADMIN_ID,
-				// dataPath: SESSION_DIR
+				dataPath: path.join(process.cwd(), '.wwebjs_auth'),
 			}),
 			puppeteer: {
-				// headless: true,
 				args: [
 					'--no-sandbox',
 					'--disable-setuid-sandbox',
-					// '--disable-dev-shm-usage',
-					// '--disable-accelerated-2d-canvas',
-					// '--disable-gpu',
-					// '--window-size=1920x1080',
+					'--disable-dev-shm-usage',
+					'--disable-accelerated-2d-canvas',
+					'--no-first-run',
+					'--no-zygote',
+					'--disable-gpu',
+					'--disable-extensions',
+					'--disable-software-rasterizer',
+					'--disable-features=site-per-process',
+					'--disable-features=IsolateOrigins',
+					'--disable-site-isolation-trials',
 				],
-				// executablePath: process.env.PUPPETEER_EXECUTABLE_PATH
 			},
 		})
 
@@ -268,7 +322,7 @@ export const initAdminClient = async (): Promise<void> => {
 				console.log('Получен QR-код для админа')
 
 				// Выводим QR-код в консоль только если нет существующей сессии
-				if (!checkExistingSession()) {
+				if (!hasExistingSession) {
 					console.log('\n=== АДМИНСКИЙ QR-КОД ===')
 					console.log(
 						'Отсканируйте этот QR-код для подключения админского аккаунта'
@@ -293,37 +347,62 @@ export const initAdminClient = async (): Promise<void> => {
 		adminClient.on('authenticated', () => {
 			console.log('Админский клиент успешно аутентифицирован')
 
-			// Проверяем наличие файла сессии
-			const sessionPath = path.join(SESSION_DIR, 'session-data.json')
-			if (fs.existsSync(sessionPath)) {
+			// Проверяем наличие всех необходимых директорий и файлов сессии
+			if (fs.existsSync(SESSION_DIR)) {
 				try {
-					const sessionData = fs.readFileSync(sessionPath, 'utf-8')
-					if (sessionData) {
-						const parsedData: SessionData = JSON.parse(sessionData)
-						if (
-							parsedData.WABrowserId &&
-							parsedData.WASecretBundle &&
-							parsedData.WAToken1 &&
-							parsedData.WAToken2
-						) {
-							console.log('Сессия админа успешно сохранена')
-						} else {
-							console.error('Сессия админа не содержит всех необходимых данных')
+					const hasAllSubdirs = SESSION_SUBDIRS.every(subdir =>
+						fs.existsSync(path.join(SESSION_DIR, subdir))
+					)
+
+					if (hasAllSubdirs) {
+						console.log('Все директории сессии успешно созданы')
+
+						// Проверяем наличие файлов в Local Storage
+						const localStorageDir = path.join(SESSION_DIR, 'Local Storage')
+						if (fs.existsSync(localStorageDir)) {
+							const files = fs.readdirSync(localStorageDir)
+							const hasRequiredFiles = files.some(
+								file =>
+									file.includes('leveldb') ||
+									file.includes('000003.log') ||
+									file.includes('CURRENT') ||
+									file.includes('LOCK') ||
+									file.includes('LOG')
+							)
+
+							if (hasRequiredFiles) {
+								console.log('Сессия админа успешно сохранена')
+							} else {
+								console.error('В Local Storage отсутствуют необходимые файлы')
+							}
 						}
+					} else {
+						console.error('Отсутствуют некоторые директории сессии')
 					}
 				} catch (error) {
-					console.error('Ошибка при чтении файла сессии:', error)
+					console.error('Ошибка при проверке директорий сессии:', error)
 				}
-			} else {
 			}
 		})
 
 		adminClient.on('auth_failure', msg => {
 			console.error('Ошибка аутентификации админского клиента:', msg)
-			// При ошибке аутентификации удаляем файл сессии
-			if (fs.existsSync(SESSION_FILE)) {
-				fs.unlinkSync(SESSION_FILE)
-				console.log('Файл сессии удален из-за ошибки аутентификации')
+			// При ошибке аутентификации удаляем все директории сессии
+			if (fs.existsSync(SESSION_DIR)) {
+				try {
+					// Удаляем все поддиректории
+					for (const subdir of SESSION_SUBDIRS) {
+						const subdirPath = path.join(SESSION_DIR, subdir)
+						if (fs.existsSync(subdirPath)) {
+							fs.rmSync(subdirPath, { recursive: true, force: true })
+						}
+					}
+					console.log(
+						'Все директории сессии удалены из-за ошибки аутентификации'
+					)
+				} catch (error) {
+					console.error('Ошибка при удалении директорий сессии:', error)
+				}
 			}
 		})
 
@@ -335,10 +414,22 @@ export const initAdminClient = async (): Promise<void> => {
 			if (reason === 'LOGOUT') {
 				console.log('Нормальное отключение, сессия сохранена')
 			} else {
-				// При неожиданном отключении удаляем сессию
-				if (fs.existsSync(SESSION_FILE)) {
-					fs.unlinkSync(SESSION_FILE)
-					console.log('Файл сессии удален из-за неожиданного отключения')
+				// При неожиданном отключении удаляем все директории сессии
+				if (fs.existsSync(SESSION_DIR)) {
+					try {
+						// Удаляем все поддиректории
+						for (const subdir of SESSION_SUBDIRS) {
+							const subdirPath = path.join(SESSION_DIR, subdir)
+							if (fs.existsSync(subdirPath)) {
+								fs.rmSync(subdirPath, { recursive: true, force: true })
+							}
+						}
+						console.log(
+							'Все директории сессии удалены из-за неожиданного отключения'
+						)
+					} catch (error) {
+						console.error('Ошибка при удалении директорий сессии:', error)
+					}
 				}
 			}
 		})

@@ -16,15 +16,18 @@ import { initDailyReportCron } from './dailyReport'
 // Глобальная переменная для хранения таймеров QR-кодов
 const qrTimers = new Map<string, NodeJS.Timeout>()
 
+// Глобальная переменная для хранения статуса QR-кода
+export const qrStatus: {
+	[userId: string]: 'pending' | 'scanned' | 'ready' | 'error'
+} = {}
+
 const messageMonitor = MessageMonitor.getInstance()
 
-// Создаем директорию для сессий в домашней директории
+// Путь к директории сессий
 const sessionsDir = path.join(process.cwd(), '.wwebjs_auth')
-fs.mkdirSync(sessionsDir, { recursive: true })
-console.log(`[${new Date().toISOString()}] 📁 Директория сессий:`, sessionsDir)
 
-// Проверяем наличие сессий
-const checkSessions = () => {
+// Функция для проверки существующих сессий
+const checkSessions = (): string[] => {
 	if (fs.existsSync(sessionsDir)) {
 		const sessions = fs.readdirSync(sessionsDir)
 		console.log(`[${new Date().toISOString()}] 📂 Найденные сессии:`, sessions)
@@ -33,28 +36,6 @@ const checkSessions = () => {
 	console.log(`[${new Date().toISOString()}] ⚠️ Директория сессий пуста`)
 	return []
 }
-
-// Очистка файлов блокировки
-const clearLockFiles = () => {
-	const sessionDir = path.join(process.cwd(), '.wwebjs_auth')
-	if (fs.existsSync(sessionDir)) {
-		try {
-			// Удаляем всю директорию с сессиями
-			fs.rmSync(sessionDir, { recursive: true, force: true })
-			console.log('Удалена директория с сессиями:', sessionDir)
-		} catch (error) {
-			console.error('Ошибка при удалении директории с сессиями:', error)
-		}
-	}
-}
-
-initCron(messageMonitor)
-initDailyReportCron(messageMonitor)
-
-// Глобальная переменная для хранения статуса QR-кода
-export let qrStatus: {
-	[userId: string]: 'pending' | 'scanned' | 'ready' | 'error'
-} = {}
 
 // Получение или создание клиента
 export const getOrCreateClient = (companyId: string): Client => {
@@ -69,6 +50,14 @@ export const getOrCreateClient = (companyId: string): Client => {
 		`[${new Date().toISOString()}] 🔍 Проверка сессии для компании ${companyId}:`,
 		hasSession ? 'найдена' : 'не найдена'
 	)
+
+	// Создаем директорию для сессий только если она не существует
+	if (!fs.existsSync(sessionsDir)) {
+		fs.mkdirSync(sessionsDir, { recursive: true })
+		console.log(
+			`[${new Date().toISOString()}] 📁 Создана директория для сессий: ${sessionsDir}`
+		)
+	}
 
 	// Если это админский клиент, используем существующую сессию
 	const clientId =

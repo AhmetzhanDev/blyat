@@ -182,14 +182,14 @@ console.log(
 // Инициализируем подключение к MongoDB
 mongoose
 	.connect(process.env.MONGO_URI!, {
-		serverSelectionTimeoutMS: 5000, // 5 секунд таймаут для выбора сервера
-		socketTimeoutMS: 45000, // 45 секунд таймаут для сокета
-		connectTimeoutMS: 10000, // 10 секунд таймаут для подключения
-		maxPoolSize: 10, // максимальное количество соединений в пуле
-		minPoolSize: 5, // минимальное количество соединений в пуле
-		retryWrites: true, // повторные попытки записи
-		retryReads: true, // повторные попытки чтения
-		w: 'majority', // подтверждение записи большинством
+		serverSelectionTimeoutMS: 5000,
+		socketTimeoutMS: 45000,
+		connectTimeoutMS: 10000,
+		maxPoolSize: 10,
+		minPoolSize: 5,
+		retryWrites: true,
+		retryReads: true,
+		w: 'majority',
 	})
 	.then(async () => {
 		console.log(`[${new Date().toISOString()}] ✅ Подключено к MongoDB`)
@@ -197,8 +197,6 @@ mongoose
 			`[${new Date().toISOString()}] 📊 Статус MongoDB:`,
 			mongoose.connection.readyState
 		)
-		// Инициализируем админский клиент после подключения к БД
-		await initAdminClient()
 
 		// Инициализация WhatsApp клиентов после подключения к MongoDB
 		await initWhatsappClients(io).catch(error => {
@@ -309,15 +307,6 @@ httpServer.listen(PORT, async () => {
 			{},
 			{ $set: { isRunning: false } },
 			{ new: true }
-		)
-
-		// Инициализируем админский клиент WhatsApp
-		console.log(
-			`[${new Date().toISOString()}] 🔄 Инициализация WhatsApp админского клиента...`
-		)
-		await initAdminClient()
-		console.log(
-			`[${new Date().toISOString()}] ✅ Админский клиент WhatsApp готов к использованию`
 		)
 
 		// Получаем экземпляр MessageMonitor
