@@ -209,19 +209,19 @@ export class NightlyReportManager {
 							await telegramService.initialize()
 
 							const reportMessage = `
-📊 *Ночной отчет*
-Компания: ${report.companyName}
-Период: ${reportStart.toLocaleString('ru-RU', {
+							📊 *Ночной отчет*
+							Компания: ${report.companyName}
+							Период: ${reportStart.toLocaleString('ru-RU', {
 								timeZone: 'Asia/Almaty',
 							})} - ${reportEnd.toLocaleString('ru-RU', {
 								timeZone: 'Asia/Almaty',
 							})}
-Всего чатов: ${report.stats.totalChats}
-Всего сообщений: ${report.stats.totalMessages}
+							Всего чатов: ${report.stats.totalChats}
+							Всего сообщений: ${report.stats.totalMessages}
 `
 
 							await telegramService.sendMessage(
-								company.telegramGroupId,
+								company.telegramGroupId.toString(),
 								reportMessage
 							)
 							console.log(
