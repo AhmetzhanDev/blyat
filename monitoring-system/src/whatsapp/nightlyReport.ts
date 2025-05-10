@@ -102,9 +102,9 @@ export class NightlyReportManager {
 			})
 
 			// Проверяем, нужно ли запустить отчет сейчас
-			// Запускаем отчет, если текущее время в пределах 2 минут от времени отчета
-			const timeDiff = Math.abs(reportTimeInMinutes - currentTimeInMinutes)
-			const shouldRunNow = timeDiff <= 2
+			// Запускаем отчет только если текущее время точно равно времени отчета
+			const timeDiff = currentTimeInMinutes - reportTimeInMinutes
+			const shouldRunNow = timeDiff === 0
 
 			console.log(
 				`[${new Date().toISOString()}] ⏰ Проверка времени для компании ${
