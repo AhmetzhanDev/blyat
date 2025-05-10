@@ -15,78 +15,81 @@ interface IReportStats {
 	avgResponseTime: number
 }
 
-export const initNightlyReportCron = (messageMonitor: MessageMonitor) => {
-	console.log(
-		`[${new Date().toISOString()}] 🔄 Инициализация крон для ночного отчета...`
-	)
+export class NightlyReportManager {
+	private static instance: NightlyReportManager
+	private activeJobs: Map<string, CronJob>
+	private messageMonitor: MessageMonitor | null
 
-	// Функция для создания крона для конкретной компании
-	const createCompanyCron = async (company: any) => {
+	private constructor() {
+		this.activeJobs = new Map()
+		this.messageMonitor = null
+	}
+
+	public static getInstance(): NightlyReportManager {
+		if (!NightlyReportManager.instance) {
+			NightlyReportManager.instance = new NightlyReportManager()
+		}
+		return NightlyReportManager.instance
+	}
+
+	public setMessageMonitor(monitor: MessageMonitor) {
+		this.messageMonitor = monitor
+	}
+
+	public async createCompanyCron(company: any) {
 		try {
+			// Останавливаем существующий крон, если он есть
+			const existingJob = this.activeJobs.get(company._id.toString())
+			if (existingJob) {
+				console.log(
+					`[${new Date().toISOString()}] 🔄 Остановка существующего крона для компании ${
+						company.nameCompany
+					}`
+				)
+				existingJob.stop()
+			}
+
 			// Конвертируем рабочее время в UTC
 			const [workStartHours, workStartMinutes] = company
 				.working_hours_start!.split(':')
 				.map(Number)
+			const [workEndHours, workEndMinutes] = company
+				.working_hours_end!.split(':')
+				.map(Number)
 
-			// Проверяем валидность времени
-			if (isNaN(workStartHours) || isNaN(workStartMinutes)) {
-				console.log(
-					`[${new Date().toISOString()}] ⚠️ Некорректный формат рабочего времени для компании ${
-						company.nameCompany
-					}`
-				)
-				return null
-			}
-
-			// Вычисляем время запуска (за 5 часов до начала рабочего дня)
-			const reportHours = workStartHours - 5
-			const reportMinutes = workStartMinutes
-
-			// Форматируем время для cron (добавляем ведущие нули)
-			const formattedHours = reportHours.toString().padStart(2, '0')
-			const formattedMinutes = reportMinutes.toString().padStart(2, '0')
-
-			// Создаем cron выражение
-			const cronExpression = `${formattedMinutes} ${formattedHours} * * *`
-
-			console.log(
-				`[${new Date().toISOString()}] ⏰ Создание крона для компании ${
-					company.nameCompany
-				}:`,
-				{
-					workStartLocal: company.working_hours_start,
-					reportTime: `${formattedHours}:${formattedMinutes}`,
-					cronExpression,
-				}
-			)
-
-			// Проверяем, не пора ли запустить отчет сейчас
-			const now = new Date()
-			const almatyTime = toZonedTime(now, 'Asia/Almaty')
+			// Конвертируем в UTC (Almaty UTC+6)
+			const workStartUTC = workStartHours - 6
+			const workEndUTC = workEndHours - 6
 
 			// Получаем текущее время в UTC
-			const [currentHours, currentMinutes] = [
-				now.getUTCHours(),
-				now.getUTCMinutes(),
-			]
+			const now = new Date()
+			const currentHour = now.getUTCHours()
+			const currentMinute = now.getUTCMinutes()
+			const currentTimeInMinutes = currentHour * 60 + currentMinute
 
-			// Конвертируем время в минуты для удобного сравнения
-			const currentTimeInMinutes = currentHours * 60 + currentMinutes
-			const reportTimeInMinutes = reportHours * 60 + reportMinutes
+			// Время отчета (за 5 минут до начала рабочего дня)
+			const reportHour = workStartUTC
+			const reportMinute = 0
+			const reportTimeInMinutes = reportHour * 60 + reportMinute
 
-			// Проверяем, что текущее время равно времени отчета
+			// Проверяем, нужно ли запустить отчет сейчас
 			const timeDiff = reportTimeInMinutes - currentTimeInMinutes
 			const shouldRunNow = timeDiff === 0
 
-			console.log(`[${new Date().toISOString()}] ⏰ Проверка времени:`, {
-				currentTimeUTC: `${currentHours}:${currentMinutes}`,
-				reportTimeUTC: `${reportHours}:${reportMinutes}`,
-				currentTimeInMinutes,
-				reportTimeInMinutes,
-				timeDiff,
-				shouldRunNow,
-				almatyTime: format(almatyTime, 'HH:mm'),
-			})
+			console.log(
+				`[${new Date().toISOString()}] ⏰ Проверка времени для компании ${
+					company.nameCompany
+				}:`,
+				{
+					currentTime: `${currentHour}:${currentMinute} UTC`,
+					reportTime: `${reportHour}:${reportMinute} UTC`,
+					timeDiff,
+					shouldRunNow,
+				}
+			)
+
+			// Создаем крон выражение для ежедневного запуска в UTC
+			const cronExpression = `${reportMinute} ${reportHour} * * *`
 
 			const job = new CronJob(
 				cronExpression,
@@ -96,19 +99,14 @@ export const initNightlyReportCron = (messageMonitor: MessageMonitor) => {
 							company.nameCompany
 						}`
 					)
-					console.log(
-						`[${new Date().toISOString()}] 🔍 Проверка данных компании:`,
-						{
-							id: company._id,
-							name: company.nameCompany,
-							phoneNumber: company.phoneNumber,
-							telegramGroupId: company.telegramGroupId,
-							working_hours_start: company.working_hours_start,
-							working_hours_end: company.working_hours_end,
-						}
-					)
-
 					try {
+						if (!this.messageMonitor) {
+							throw new Error('MessageMonitor не инициализирован')
+						}
+
+						// Получаем текущую дату в UTC
+						const now = new Date()
+
 						// Конвертируем рабочее время в UTC
 						const [workStartHours, workStartMinutes] = company
 							.working_hours_start!.split(':')
@@ -117,223 +115,148 @@ export const initNightlyReportCron = (messageMonitor: MessageMonitor) => {
 							.working_hours_end!.split(':')
 							.map(Number)
 
-						console.log(`[${new Date().toISOString()}] ⏰ Рабочее время:`, {
-							workStartHours,
-							workStartMinutes,
-							workEndHours,
-							workEndMinutes,
-						})
+						// Конвертируем в UTC (Almaty UTC+6)
+						const workStartUTC = workStartHours - 6
+						const workEndUTC = workEndHours - 6
 
-						// Рассчитываем период для отчета
-						const now = new Date()
-						const almatyTime = toZonedTime(now, 'Asia/Almaty')
+						// Вычисляем период отчета
+						const reportEnd = new Date(now)
+						reportEnd.setUTCHours(workStartUTC, 0, 0, 0)
 
-						// Конвертируем рабочее время в UTC (вычитаем 5 часов для Алматы)
-						const workStartUTC = workStartHours - 5
-						const workEndUTC = workEndHours - 5
-
-						// Конец периода - начало текущего рабочего дня
-						const reportEnd = new Date(almatyTime)
-						reportEnd.setHours(workStartUTC, workStartMinutes, 0, 0)
-
-						// Начало периода - конец предыдущего рабочего дня
 						const reportStart = new Date(reportEnd)
-						reportStart.setDate(reportStart.getDate() - 1) // предыдущий день
-						reportStart.setHours(workEndUTC, workEndMinutes, 0, 0)
+						reportStart.setUTCDate(reportEnd.getUTCDate() - 1)
+						reportStart.setUTCHours(workEndUTC, 0, 0, 0)
 
 						console.log(
-							`[${new Date().toISOString()}] 📅 Период отчета для компании ${
-								company._id
+							`[${new Date().toISOString()}] 📊 Период отчета для компании ${
+								company.nameCompany
 							}:`,
 							{
 								start: reportStart.toISOString(),
 								end: reportEnd.toISOString(),
-								workStartLocal: company.working_hours_start,
-								workEndLocal: company.working_hours_end,
-								workStartUTC: `${workStartUTC}:${workStartMinutes}`,
-								workEndUTC: `${workEndUTC}:${workEndMinutes}`,
-								almatyTime: format(almatyTime, 'yyyy-MM-dd HH:mm:ss'),
+								startLocal: reportStart.toLocaleString('ru-RU', {
+									timeZone: 'Asia/Almaty',
+								}),
+								endLocal: reportEnd.toLocaleString('ru-RU', {
+									timeZone: 'Asia/Almaty',
+								}),
 							}
 						)
 
-						// Получаем все чаты за период
+						// Получаем все чаты за период отчета
 						const chats = await WhatsappChat.find({
-							companyId: new Types.ObjectId(company._id),
+							companyId: company._id,
 							createdAt: {
 								$gte: reportStart,
-								$lte: reportEnd, // включая конец периода
+								$lte: reportEnd,
 							},
-						}).lean()
+						})
 
 						console.log(
-							`[${new Date().toISOString()}] 🔍 Найдено чатов за период: ${
-								chats.length
-							}`
+							`[${new Date().toISOString()}] 📊 Найдено чатов: ${chats.length}`
 						)
 
-						// Получаем все сообщения за период для расчета среднего времени ответа
+						// Получаем все сообщения за период отчета
 						const messages = await WhatsappMessage.find({
-							whatsappChatId: { $in: chats.map(chat => chat._id) },
+							companyId: company._id,
 							createdAt: {
 								$gte: reportStart,
-								$lte: reportEnd, // включая конец периода
+								$lte: reportEnd,
 							},
-						}).lean()
+						})
 
 						console.log(
-							`[${new Date().toISOString()}] 📨 Найдено сообщений за период: ${
+							`[${new Date().toISOString()}] 📊 Найдено сообщений: ${
 								messages.length
 							}`
 						)
 
-						// Статистика
-						const stats: IReportStats = {
-							totalChats: chats.length,
-							respondedChats: chats.filter(chat => chat.sendMessage === true)
-								.length,
-							unansweredChats: 0,
-							avgResponseTime: 0,
-						}
-						stats.unansweredChats = chats.filter(
-							chat => chat.sendMessage === false
-						).length
-
-						// Расчет среднего времени ответа
-						const responseTimes: number[] = []
-						for (const chat of chats) {
-							const chatMessages = messages.filter(m =>
-								m.whatsappChatId.equals(chat._id)
-							)
-							for (let i = 0; i < chatMessages.length - 1; i++) {
-								if (!chatMessages[i].isEcho && chatMessages[i + 1].isEcho) {
-									const responseTime =
-										chatMessages[i + 1].createdAt.getTime() -
-										chatMessages[i].createdAt.getTime()
-									responseTimes.push(responseTime)
-								}
-							}
-						}
-
-						stats.avgResponseTime =
-							responseTimes.length > 0
-								? Math.round(
-										responseTimes.reduce((a, b) => a + b, 0) /
-											responseTimes.length /
-											1000
-								  )
-								: 0
-
-						// Получаем непросмотренные чаты
-						const unviewedChats = chats.filter(
-							chat => chat.sendMessage === false
-						)
-
-						// Формируем сообщение отчета
-						let reportMessage = `🌙 <b>Ночной отчет от SalesTrack</b>\n\n
-						🗓 <b>Период:</b> с ${format(reportStart, 'HH:mm')} до ${format(
-							reportEnd,
-							'HH:mm'
-						)} (Алматы)\n
-						🏢 <b>Компания:</b> ${company.nameCompany}\n\n
-						<b>Статистика по обращениям вне рабочего времени:</b>\n\n
-						✍️ <b>Начато диалогов:</b> ${stats.totalChats}\n
-						✅ <b>Ответ получен:</b> ${stats.respondedChats}\n
-						⚠️ <b>Без ответа:</b> ${stats.unansweredChats}\n
-						⚡️ <b>Среднее время ответа:</b> ${Math.floor(
-							stats.avgResponseTime / 60
-						)} мин. ${stats.avgResponseTime % 60} сек.`
-
-						// Добавляем ссылки на непросмотренные чаты
-						if (unviewedChats.length > 0) {
-							const links = unviewedChats
-								.map(chat => `https://wa.me/${chat.chatId}`)
-								.join('\n')
-
-							reportMessage += `\n\n📌 <b>Рекомендуем проверить и ответить на непросмотренные обращения:</b>\n${links}`
+						// Формируем отчет
+						const report = {
+							companyName: company.nameCompany,
+							period: {
+								start: reportStart.toISOString(),
+								end: reportEnd.toISOString(),
+							},
+							stats: {
+								totalChats: chats.length,
+								totalMessages: messages.length,
+							},
 						}
 
 						// Отправляем отчет в Telegram
 						if (company.telegramGroupId) {
-							try {
-								console.log(
-									`[${new Date().toISOString()}] 📤 Подготовка к отправке отчета:`,
-									{
-										companyId: company._id,
-										companyName: company.nameCompany,
-										telegramGroupId: company.telegramGroupId,
-										messageLength: reportMessage.length,
-									}
-								)
+							const telegramService = TelegramService.getInstance()
+							await telegramService.initialize()
 
-								await messageMonitor.sendTelegramMessage(
-									company._id,
-									reportMessage
-								)
-								console.log(
-									`[${new Date().toISOString()}] ✅ Ночной отчет отправлен в Telegram для компании ${
-										company.nameCompany
-									}`
-								)
-							} catch (error) {
-								console.error(
-									`[${new Date().toISOString()}] ❌ Ошибка при отправке отчета:`,
-									error
-								)
-								if (error instanceof Error) {
-									console.error(
-										`[${new Date().toISOString()}] ❌ Детали ошибки:`,
-										error.message
-									)
-								}
-							}
+							const reportMessage = `
+📊 *Ночной отчет*
+Компания: ${report.companyName}
+Период: ${reportStart.toLocaleString('ru-RU', {
+								timeZone: 'Asia/Almaty',
+							})} - ${reportEnd.toLocaleString('ru-RU', {
+								timeZone: 'Asia/Almaty',
+							})}
+Всего чатов: ${report.stats.totalChats}
+Всего сообщений: ${report.stats.totalMessages}
+`
+
+							await telegramService.sendMessage(
+								company.telegramGroupId,
+								reportMessage
+							)
+							console.log(
+								`[${new Date().toISOString()}] ✅ Отчет отправлен в Telegram для компании ${
+									company.nameCompany
+								}`
+							)
 						} else {
 							console.log(
-								`[${new Date().toISOString()}] ⚠️ У компании ${
+								`[${new Date().toISOString()}] ⚠️ Telegram группа не настроена для компании ${
 									company.nameCompany
-								} не указан telegramGroupId`
+								}`
 							)
 						}
 					} catch (error) {
 						console.error(
-							`[${new Date().toISOString()}] ❌ Ошибка при формировании ночного отчета:`,
+							`[${new Date().toISOString()}] ❌ Ошибка при генерации отчета для компании ${
+								company.nameCompany
+							}:`,
 							error
 						)
-						if (error instanceof Error) {
-							console.error(
-								`[${new Date().toISOString()}] ❌ Детали ошибки:`,
-								error.message,
-								error.stack
-							)
-						}
 					}
 				},
 				null,
-				false, // не запускаем сразу
-				'UTC' // используем UTC вместо Asia/Almaty
+				true,
+				'UTC'
 			)
 
 			// Запускаем крон
 			job.start()
 
+			// Сохраняем крон в хранилище
+			this.activeJobs.set(company._id.toString(), job)
+
+			console.log(
+				`[${new Date().toISOString()}] ✅ Крон создан для компании ${
+					company.nameCompany
+				}`,
+				{
+					cronExpression,
+					nextRun: job.nextDate().toString(),
+					shouldRunNow,
+				}
+			)
+
 			// Если текущее время равно времени отчета, запускаем отчет сразу
 			if (shouldRunNow) {
 				console.log(
-					`[${new Date().toISOString()}] ⚡️ Запуск отчета немедленно для компании ${
+					`[${new Date().toISOString()}] 🚀 Запуск отчета немедленно для компании ${
 						company.nameCompany
-					} (текущее время совпадает с временем отчета)`
+					}`
 				)
 				job.fireOnTick()
 			}
-
-			// Проверяем следующую дату запуска
-			const nextRun = job.nextDate()
-			console.log(`[${new Date().toISOString()}] ⏰ Следующий запуск:`, {
-				nextRun: nextRun?.toString(),
-				cronExpression,
-				companyName: company.nameCompany,
-				shouldRunNow,
-				timeDiff,
-			})
 
 			return job
 		} catch (error) {
@@ -347,8 +270,16 @@ export const initNightlyReportCron = (messageMonitor: MessageMonitor) => {
 		}
 	}
 
-	// Инициализация кронов для всех компаний
-	const initCrons = async () => {
+	public async updateCompanyCron(company: any) {
+		console.log(
+			`[${new Date().toISOString()}] 🔄 Обновление крона для компании ${
+				company.nameCompany
+			}`
+		)
+		return this.createCompanyCron(company)
+	}
+
+	public async initCrons() {
 		try {
 			// Получаем все компании с настроенными рабочими часами
 			const companies = await CompanySettings.find({
@@ -368,7 +299,7 @@ export const initNightlyReportCron = (messageMonitor: MessageMonitor) => {
 
 			// Создаем крон для каждой компании
 			for (const company of companies) {
-				const job = await createCompanyCron(company)
+				const job = await this.createCompanyCron(company)
 				if (!job) {
 					console.log(
 						`[${new Date().toISOString()}] ⚠️ Не удалось создать крон для компании ${
@@ -385,12 +316,33 @@ export const initNightlyReportCron = (messageMonitor: MessageMonitor) => {
 		}
 	}
 
-	// Запускаем инициализацию кронов
-	initCrons()
+	public stop() {
+		// Останавливаем все активные кроны
+		for (const [companyId, job] of this.activeJobs.entries()) {
+			console.log(
+				`[${new Date().toISOString()}] 🔄 Остановка крона для компании ${companyId}`
+			)
+			job.stop()
+		}
+		this.activeJobs.clear()
+	}
+}
+
+export const initNightlyReportCron = (
+	messageMonitor: MessageMonitor | null
+) => {
+	console.log(
+		`[${new Date().toISOString()}] 🔄 Инициализация крон для ночного отчета...`
+	)
+
+	const manager = NightlyReportManager.getInstance()
+	if (messageMonitor) {
+		manager.setMessageMonitor(messageMonitor)
+	}
+	manager.initCrons()
 
 	return {
-		stop: () => {
-			// Здесь можно добавить логику остановки всех кронов при необходимости
-		},
+		stop: () => manager.stop(),
+		updateCompanyCron: (company: any) => manager.updateCompanyCron(company),
 	}
 }

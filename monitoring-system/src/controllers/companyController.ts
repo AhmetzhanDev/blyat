@@ -6,6 +6,7 @@ import { v4 as uuidv4 } from 'uuid'
 import { TelegramService } from '../telegram/telegramClient'
 import { Types } from 'mongoose'
 import { UserModel } from '../models/User'
+import { NightlyReportManager } from '../whatsapp/nightlyReport'
 
 export const saveCompanySettings = async (req: Request, res: Response) => {
 	try {
@@ -232,6 +233,20 @@ export const updateCompanySettings = async (req: Request, res: Response) => {
 				},
 			}
 		)
+
+		// Обновляем крон для компании
+		const updatedSettings = await CompanySettings.findOne({
+			_id: new Types.ObjectId(companyId),
+		})
+		if (updatedSettings) {
+			const manager = NightlyReportManager.getInstance()
+			await manager.updateCompanyCron(updatedSettings)
+			console.log(
+				`[${new Date().toISOString()}] ✅ Крон обновлен для компании ${
+					updatedSettings.nameCompany
+				}`
+			)
+		}
 
 		res.status(200).json({
 			success: true,
