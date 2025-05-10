@@ -42,8 +42,12 @@ export const initNightlyReportCron = (messageMonitor: MessageMonitor) => {
 			const reportHours = workStartHours - 5
 			const reportMinutes = workStartMinutes
 
+			// Форматируем время для cron (добавляем ведущие нули)
+			const formattedHours = reportHours.toString().padStart(2, '0')
+			const formattedMinutes = reportMinutes.toString().padStart(2, '0')
+
 			// Создаем cron выражение
-			const cronExpression = `${reportMinutes} ${reportHours} * * *`
+			const cronExpression = `${formattedMinutes} ${formattedHours} * * *`
 
 			console.log(
 				`[${new Date().toISOString()}] ⏰ Создание крона для компании ${
@@ -51,7 +55,7 @@ export const initNightlyReportCron = (messageMonitor: MessageMonitor) => {
 				}:`,
 				{
 					workStartLocal: company.working_hours_start,
-					reportTime: `${reportHours}:${reportMinutes}`,
+					reportTime: `${formattedHours}:${formattedMinutes}`,
 					cronExpression,
 				}
 			)
@@ -258,7 +262,7 @@ export const initNightlyReportCron = (messageMonitor: MessageMonitor) => {
 				} запущен`
 			)
 			console.log(
-				`[${new Date().toISOString()}] ⏰ Следующий запуск в ${reportHours}:${reportMinutes} (Алматы)`
+				`[${new Date().toISOString()}] ⏰ Следующий запуск в ${formattedHours}:${formattedMinutes} (Алматы)`
 			)
 
 			return job
