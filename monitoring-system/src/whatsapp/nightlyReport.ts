@@ -184,18 +184,32 @@ export const initNightlyReportCron = (messageMonitor: MessageMonitor) => {
 						}
 
 						// Отправляем отчет
-						if (company.phoneNumber) {
+						if (company.phoneNumber && company.telegramGroupId) {
+							console.log(
+								`[${new Date().toISOString()}] 📤 Отправка ночного отчета для компании ${
+									company.nameCompany
+								}`
+							)
 							await messageMonitor.sendTelegramMessage(
 								company._id,
 								reportMessage
 							)
+							console.log(
+								`[${new Date().toISOString()}] ✅ Ночной отчет отправлен для компании ${
+									company._id
+								}`
+							)
+						} else {
+							console.log(
+								`[${new Date().toISOString()}] ⚠️ Не удалось отправить ночной отчет для компании ${
+									company.nameCompany
+								}: ${
+									!company.phoneNumber
+										? 'отсутствует номер телефона'
+										: 'отсутствует telegramGroupId'
+								}`
+							)
 						}
-
-						console.log(
-							`[${new Date().toISOString()}] ✅ Ночной отчет отправлен для компании ${
-								company._id
-							}`
-						)
 					} catch (error) {
 						console.error(
 							`[${new Date().toISOString()}] ❌ Ошибка при формировании ночного отчета для компании ${
