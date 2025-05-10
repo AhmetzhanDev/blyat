@@ -78,14 +78,18 @@ export const initNightlyReportCron = (messageMonitor: MessageMonitor) => {
 						const now = new Date()
 						const almatyTime = toZonedTime(now, 'Asia/Almaty')
 
-						// Конец периода - начало рабочего дня
+						// Конвертируем рабочее время в UTC (вычитаем 5 часов для Алматы)
+						const workStartUTC = workStartHours - 5
+						const workEndUTC = workEndHours - 5
+
+						// Конец периода - начало текущего рабочего дня
 						const reportEnd = new Date(almatyTime)
-						reportEnd.setHours(workStartHours, workStartMinutes, 0, 0)
+						reportEnd.setHours(workStartUTC, workStartMinutes, 0, 0)
 
 						// Начало периода - конец предыдущего рабочего дня
 						const reportStart = new Date(reportEnd)
-						reportStart.setDate(reportStart.getDate() - 1)
-						reportStart.setHours(workEndHours, workEndMinutes, 0, 0)
+						reportStart.setDate(reportStart.getDate() - 1) // предыдущий день
+						reportStart.setHours(workEndUTC, workEndMinutes, 0, 0)
 
 						console.log(
 							`[${new Date().toISOString()}] 📅 Период отчета для компании ${
@@ -94,8 +98,10 @@ export const initNightlyReportCron = (messageMonitor: MessageMonitor) => {
 							{
 								start: reportStart.toISOString(),
 								end: reportEnd.toISOString(),
-								workStart: company.working_hours_start,
-								workEnd: company.working_hours_end,
+								workStartLocal: company.working_hours_start,
+								workEndLocal: company.working_hours_end,
+								workStartUTC: `${workStartUTC}:${workStartMinutes}`,
+								workEndUTC: `${workEndUTC}:${workEndMinutes}`,
 								almatyTime: format(almatyTime, 'yyyy-MM-dd HH:mm:ss'),
 							}
 						)
@@ -108,6 +114,12 @@ export const initNightlyReportCron = (messageMonitor: MessageMonitor) => {
 								$lt: reportEnd,
 							},
 						}).lean()
+
+						console.log(
+							`[${new Date().toISOString()}] 🔍 Найдено чатов за период: ${
+								chats.length
+							}`
+						)
 
 						// Статистика
 						const stats: IReportStats = {
@@ -187,6 +199,16 @@ export const initNightlyReportCron = (messageMonitor: MessageMonitor) => {
 						// Отправляем отчет в Telegram
 						if (company.telegramGroupId) {
 							try {
+								console.log(
+									`[${new Date().toISOString()}] 📤 Подготовка к отправке отчета:`,
+									{
+										companyId: company._id,
+										companyName: company.nameCompany,
+										telegramGroupId: company.telegramGroupId,
+										messageLength: reportMessage.length,
+									}
+								)
+
 								await messageMonitor.sendTelegramMessage(
 									company._id,
 									reportMessage
@@ -201,6 +223,12 @@ export const initNightlyReportCron = (messageMonitor: MessageMonitor) => {
 									`[${new Date().toISOString()}] ❌ Ошибка при отправке отчета:`,
 									error
 								)
+								if (error instanceof Error) {
+									console.error(
+										`[${new Date().toISOString()}] ❌ Детали ошибки:`,
+										error.message
+									)
+								}
 							}
 						} else {
 							console.log(
