@@ -262,21 +262,21 @@ export const initNightlyReportCron = (messageMonitor: MessageMonitor) => {
 				return null
 			}
 
-			// Проверяем, что крон действительно запущен
-			console.log(`[${new Date().toISOString()}] 🔍 Проверка статуса крона:`, {
-				lastDate: job.lastDate(),
-				nextDate: job.nextDate(),
-			})
-
-			// Проверяем, что крон запустился
-			if (!job.lastDate()) {
+			// Проверяем следующую дату запуска
+			const nextRun = job.nextDate()
+			if (!nextRun) {
 				console.log(
-					`[${new Date().toISOString()}] ⚠️ Крон не запустился для компании ${
+					`[${new Date().toISOString()}] ⚠️ Не удалось определить следующую дату запуска для компании ${
 						company.nameCompany
 					}`
 				)
 				return null
 			}
+
+			console.log(`[${new Date().toISOString()}] 🔍 Проверка статуса крона:`, {
+				nextDate: nextRun.toString(),
+				timezone: 'Asia/Almaty',
+			})
 
 			console.log(
 				`[${new Date().toISOString()}] ✅ Крон для ночного отчета компании ${
@@ -287,9 +287,7 @@ export const initNightlyReportCron = (messageMonitor: MessageMonitor) => {
 				`[${new Date().toISOString()}] ⏰ Следующий запуск в ${reportHours}:${reportMinutes} (Алматы)`
 			)
 			console.log(
-				`[${new Date().toISOString()}] 📅 Следующая дата запуска: ${job
-					.nextDate()
-					.toLocaleString()}`
+				`[${new Date().toISOString()}] 📅 Следующая дата запуска: ${nextRun.toLocaleString()}`
 			)
 
 			return job
