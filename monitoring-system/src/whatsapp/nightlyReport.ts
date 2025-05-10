@@ -183,19 +183,8 @@ export const initNightlyReportCron = (messageMonitor: MessageMonitor) => {
 							reportMessage += `\n\n📌 <b>Рекомендуем проверить и ответить на непросмотренные обращения:</b>\n${links}`
 						}
 
-						// Отправляем отчет
-						if (company.phoneNumber && company.telegramGroupId) {
-							console.log(
-								`[${new Date().toISOString()}] 📤 Отправка ночного отчета для компании ${
-									company.nameCompany
-								}`
-							)
-							console.log(
-								`[${new Date().toISOString()}] 🔍 Telegram Group ID: ${
-									company.telegramGroupId
-								}`
-							)
-
+						// Отправляем отчет в Telegram
+						if (company.telegramGroupId) {
 							try {
 								await messageMonitor.sendTelegramMessage(
 									company._id,
@@ -208,30 +197,20 @@ export const initNightlyReportCron = (messageMonitor: MessageMonitor) => {
 								)
 							} catch (error) {
 								console.error(
-									`[${new Date().toISOString()}] ❌ Ошибка при отправке отчета для компании ${
-										company.nameCompany
-									}:`,
+									`[${new Date().toISOString()}] ❌ Ошибка при отправке отчета:`,
 									error
 								)
-								if (error instanceof Error) {
-									console.error(
-										`[${new Date().toISOString()}] ❌ Детали ошибки:`,
-										error.message
-									)
-								}
 							}
 						} else {
 							console.log(
 								`[${new Date().toISOString()}] ⚠️ У компании ${
 									company.nameCompany
-								} не указан telegramGroupId или phoneNumber`
+								} не указан telegramGroupId`
 							)
 						}
 					} catch (error) {
 						console.error(
-							`[${new Date().toISOString()}] ❌ Ошибка при формировании ночного отчета для компании ${
-								company.nameCompany
-							}:`,
+							`[${new Date().toISOString()}] ❌ Ошибка при формировании ночного отчета:`,
 							error
 						)
 					}
