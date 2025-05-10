@@ -63,17 +63,6 @@ export const initNightlyReportCron = (messageMonitor: MessageMonitor) => {
 							company.nameCompany
 						}`
 					)
-					console.log(
-						`[${new Date().toISOString()}] 🔍 Проверка данных компании:`,
-						{
-							id: company._id,
-							name: company.nameCompany,
-							phoneNumber: company.phoneNumber,
-							telegramGroupId: company.telegramGroupId,
-							working_hours_start: company.working_hours_start,
-							working_hours_end: company.working_hours_end,
-						}
-					)
 
 					try {
 						// Конвертируем рабочее время в UTC
@@ -86,7 +75,7 @@ export const initNightlyReportCron = (messageMonitor: MessageMonitor) => {
 
 						// Рассчитываем период для отчета
 						const now = new Date()
-						const almatyTime = toZonedTime(now, 'Asia/Almaty') // UTC+5
+						const almatyTime = toZonedTime(now, 'Asia/Almaty')
 
 						// Конец периода - начало рабочего дня
 						const reportEnd = new Date(almatyTime)
@@ -172,18 +161,18 @@ export const initNightlyReportCron = (messageMonitor: MessageMonitor) => {
 
 						// Формируем сообщение отчета
 						let reportMessage = `🌙 <b>Ночной отчет от SalesTrack</b>\n\n
-					🗓 <b>Период:</b> с ${format(reportStart, 'HH:mm')} до ${format(
+						🗓 <b>Период:</b> с ${format(reportStart, 'HH:mm')} до ${format(
 							reportEnd,
 							'HH:mm'
 						)} (Алматы)\n
 						🏢 <b>Компания:</b> ${company.nameCompany}\n\n
-					<b>Статистика по обращениям вне рабочего времени:</b>\n\n
-					✍️ <b>Начато диалогов:</b> ${stats.totalChats}\n
-					✅ <b>Ответ получен:</b> ${stats.respondedChats}\n
-					⚠️ <b>Без ответа:</b> ${stats.unansweredChats}\n
-					⚡️ <b>Среднее время ответа:</b> ${Math.floor(
-						stats.avgResponseTime / 60
-					)} мин. ${stats.avgResponseTime % 60} сек.`
+						<b>Статистика по обращениям вне рабочего времени:</b>\n\n
+						✍️ <b>Начато диалогов:</b> ${stats.totalChats}\n
+						✅ <b>Ответ получен:</b> ${stats.respondedChats}\n
+						⚠️ <b>Без ответа:</b> ${stats.unansweredChats}\n
+						⚡️ <b>Среднее время ответа:</b> ${Math.floor(
+							stats.avgResponseTime / 60
+						)} мин. ${stats.avgResponseTime % 60} сек.`
 
 						// Добавляем ссылки на непросмотренные чаты
 						if (unviewedChats.length > 0) {
@@ -255,32 +244,6 @@ export const initNightlyReportCron = (messageMonitor: MessageMonitor) => {
 			// Запускаем крон
 			job.start()
 
-			// Проверяем, что крон создался
-			if (!job) {
-				console.log(
-					`[${new Date().toISOString()}] ⚠️ Не удалось создать крон для компании ${
-						company.nameCompany
-					}`
-				)
-				return null
-			}
-
-			// Проверяем следующую дату запуска
-			const nextRun = job.nextDate()
-			if (!nextRun) {
-				console.log(
-					`[${new Date().toISOString()}] ⚠️ Не удалось определить следующую дату запуска для компании ${
-						company.nameCompany
-					}`
-				)
-				return null
-			}
-
-			console.log(`[${new Date().toISOString()}] 🔍 Проверка статуса крона:`, {
-				nextDate: nextRun.toString(),
-				timezone: 'Asia/Almaty',
-			})
-
 			console.log(
 				`[${new Date().toISOString()}] ✅ Крон для ночного отчета компании ${
 					company.nameCompany
@@ -288,9 +251,6 @@ export const initNightlyReportCron = (messageMonitor: MessageMonitor) => {
 			)
 			console.log(
 				`[${new Date().toISOString()}] ⏰ Следующий запуск в ${reportHours}:${reportMinutes} (Алматы)`
-			)
-			console.log(
-				`[${new Date().toISOString()}] 📅 Следующая дата запуска: ${nextRun.toLocaleString()}`
 			)
 
 			return job
