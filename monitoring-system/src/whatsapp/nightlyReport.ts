@@ -186,6 +186,15 @@ export const initNightlyReportCron = (messageMonitor: MessageMonitor) => {
 						// Отправляем отчет в Telegram
 						if (company.telegramGroupId) {
 							try {
+								// Проверяем формат telegramGroupId
+								let groupId = company.telegramGroupId.toString()
+								if (!groupId.startsWith('-')) {
+									groupId = `-${groupId}`
+								}
+								console.log(
+									`[${new Date().toISOString()}] 📤 Отправка отчета в группу: ${groupId}`
+								)
+
 								await messageMonitor.sendTelegramMessage(
 									company._id,
 									reportMessage
