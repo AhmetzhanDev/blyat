@@ -59,20 +59,19 @@ export const initNightlyReportCron = (messageMonitor: MessageMonitor) => {
 			const now = new Date()
 			const almatyTime = toZonedTime(now, 'Asia/Almaty')
 
-			// Создаем дату в часовом поясе Алматы
-			const today = new Date()
-			today.setHours(reportHours, reportMinutes, 0, 0)
-			const almatyScheduledTime = toZonedTime(today, 'Asia/Almaty')
+			// Создаем дату в UTC
+			const scheduledTime = new Date()
+			scheduledTime.setUTCHours(reportHours - 5, reportMinutes, 0, 0) // Вычитаем 6 часов для UTC
 
 			// Если текущее время меньше времени запуска, используем стандартный крон
 			// Если нет - создаем крон с немедленным запуском
-			const willRunToday = almatyTime.getTime() < almatyScheduledTime.getTime()
+			const shouldRunToday = now.getTime() < scheduledTime.getTime()
 
 			console.log(`[${new Date().toISOString()}] ⏱ Проверка времени запуска:`, {
 				currentTime: format(almatyTime, 'HH:mm:ss'),
-				scheduledTime: format(almatyScheduledTime, 'HH:mm:ss'),
-				willRunToday,
-				timezone: 'Asia/Almaty',
+				scheduledTime: format(scheduledTime, 'HH:mm:ss'),
+				shouldRunToday,
+				timezone: 'UTC',
 			})
 
 			const job = new CronJob(
@@ -268,7 +267,7 @@ export const initNightlyReportCron = (messageMonitor: MessageMonitor) => {
 					}
 				},
 				null,
-				willRunToday, // start job right now только если время еще не прошло
+				shouldRunToday, // start job right now только если время еще не прошло
 				'Asia/Almaty' // timezone
 			)
 
@@ -296,7 +295,7 @@ export const initNightlyReportCron = (messageMonitor: MessageMonitor) => {
 			console.log(`[${new Date().toISOString()}] 🔍 Проверка статуса крона:`, {
 				nextDate: nextRun.toString(),
 				timezone: 'Asia/Almaty',
-				willRunToday,
+				shouldRunToday,
 			})
 
 			console.log(
