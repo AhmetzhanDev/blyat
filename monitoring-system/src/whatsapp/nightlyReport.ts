@@ -49,6 +49,16 @@ export class NightlyReportManager {
 
 	public async createCompanyCron(company: any) {
 		try {
+			// Проверяем наличие рабочих часов
+			if (!company.working_hours_start || !company.working_hours_end) {
+				console.log(
+					`[${new Date().toISOString()}] ⚠️ У компании ${
+						company.nameCompany
+					} не указаны рабочие часы, крон не будет создан`
+				)
+				return null
+			}
+
 			// Останавливаем существующий крон, если он есть
 			const existingJob = this.activeJobs.get(company._id.toString())
 			if (existingJob) {
@@ -374,8 +384,8 @@ ${
 				whatsappAuthorized: true,
 				phoneNumber: { $exists: true, $ne: null },
 				nameCompany: { $exists: true, $ne: null },
-				working_hours_start: { $exists: true, $ne: null },
-				working_hours_end: { $exists: true, $ne: null },
+				working_hours_start: { $exists: true, $ne: null, $nin: ['', null] },
+				working_hours_end: { $exists: true, $ne: null, $nin: ['', null] },
 			})
 
 			if (companies.length === 0) {
@@ -384,6 +394,12 @@ ${
 				)
 				return
 			}
+
+			console.log(
+				`[${new Date().toISOString()}] 📊 Найдено ${
+					companies.length
+				} компаний с настроенными рабочими часами`
+			)
 
 			// Создаем крон для каждой компании
 			for (const company of companies) {
