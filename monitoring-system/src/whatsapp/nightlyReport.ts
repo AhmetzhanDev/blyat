@@ -61,8 +61,16 @@ export const initNightlyReportCron = (messageMonitor: MessageMonitor) => {
 			const today = new Date(almatyTime)
 			today.setHours(reportHours, reportMinutes, 0, 0)
 
-			// Если время запуска уже прошло сегодня, используем стандартный крон
+			// Если текущее время меньше времени запуска, используем стандартный крон
 			// Если нет - создаем крон с немедленным запуском
+			const willRunToday = almatyTime < today
+
+			console.log(`[${new Date().toISOString()}] ⏱ Проверка времени запуска:`, {
+				currentTime: almatyTime.toISOString(),
+				scheduledTime: today.toISOString(),
+				willRunToday,
+			})
+
 			const job = new CronJob(
 				cronExpression,
 				async () => {
@@ -256,7 +264,7 @@ export const initNightlyReportCron = (messageMonitor: MessageMonitor) => {
 					}
 				},
 				null,
-				today > almatyTime, // start job right now только если время еще не прошло
+				willRunToday, // start job right now только если время еще не прошло
 				'Asia/Almaty' // timezone
 			)
 
@@ -284,7 +292,7 @@ export const initNightlyReportCron = (messageMonitor: MessageMonitor) => {
 			console.log(`[${new Date().toISOString()}] 🔍 Проверка статуса крона:`, {
 				nextDate: nextRun.toString(),
 				timezone: 'Asia/Almaty',
-				willRunToday: today > almatyTime,
+				willRunToday,
 			})
 
 			console.log(
