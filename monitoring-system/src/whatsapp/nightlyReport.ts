@@ -248,7 +248,7 @@ export const initNightlyReportCron = (messageMonitor: MessageMonitor) => {
 					}
 				},
 				null,
-				false, // не запускаем сразу
+				true, // запускаем сразу
 				'Asia/Almaty' // timezone
 			)
 
