@@ -65,11 +65,11 @@ export const initNightlyReportCron = (messageMonitor: MessageMonitor) => {
 
 			// Если текущее время меньше времени запуска, используем стандартный крон
 			// Если нет - создаем крон с немедленным запуском
-			const willRunToday = almatyTime < today
+			const willRunToday = almatyTime.getTime() < today.getTime()
 
 			console.log(`[${new Date().toISOString()}] ⏱ Проверка времени запуска:`, {
-				currentTime: format(almatyTime, 'yyyy-MM-dd HH:mm:ss'),
-				scheduledTime: format(today, 'yyyy-MM-dd HH:mm:ss'),
+				currentTime: format(almatyTime, 'HH:mm:ss'),
+				scheduledTime: format(today, 'HH:mm:ss'),
 				willRunToday,
 				timezone: 'Asia/Almaty',
 			})
