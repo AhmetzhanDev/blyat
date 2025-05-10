@@ -2,11 +2,22 @@ import { MessageMonitor } from './messageMonitor'
 import { CompanySettings } from '../models/CompanySettings'
 import { WhatsappChat } from '../models/WhatsappChat'
 import { WhatsappMessage } from '../models/WhatsappMessage'
-import { Types } from 'mongoose'
+import { Types, Document } from 'mongoose'
 import { format, subDays, addHours, isWithinInterval, parseISO } from 'date-fns'
 import { toZonedTime } from 'date-fns-tz'
 import { CronJob } from 'cron'
 import { TelegramService } from '../telegram/telegramClient'
+
+interface IWhatsappChat {
+	_id: Types.ObjectId
+	companyId: Types.ObjectId
+	phoneNumber: string
+	isResponded: boolean
+	firstResponseTime?: Date
+	createdAt: Date
+}
+
+type WhatsappChatDocument = Document<unknown, {}, IWhatsappChat> & IWhatsappChat
 
 interface IReportStats {
 	totalChats: number
@@ -135,13 +146,16 @@ export class NightlyReportManager {
 							.map(Number)
 
 						// Конвертируем в UTC (Almaty UTC+6)
+						// Для конвертации из UTC+6 в UTC просто вычитаем 6 часов
 						const workStartUTC = workStartHours - 5
 						const workEndUTC = workEndHours - 5
 
 						// Вычисляем период отчета
+						// Конец периода - начало текущего рабочего дня
 						const reportEnd = new Date(now)
 						reportEnd.setUTCHours(workStartUTC, workStartMinutes, 0, 0)
 
+						// Начало периода - конец предыдущего рабочего дня
 						const reportStart = new Date(reportEnd)
 						reportStart.setUTCDate(reportEnd.getUTCDate() - 1)
 						reportStart.setUTCHours(workEndUTC, workEndMinutes, 0, 0)
@@ -172,7 +186,9 @@ export class NightlyReportManager {
 						})
 
 						console.log(
-							`[${new Date().toISOString()}] 📊 Найдено чатов: ${chats.length}`
+							`[${new Date().toISOString()}] 📊 Найдено чатов за период отчета: ${
+								chats.length
+							}`
 						)
 
 						// Получаем все сообщения за период отчета
@@ -185,40 +201,76 @@ export class NightlyReportManager {
 						})
 
 						console.log(
-							`[${new Date().toISOString()}] 📊 Найдено сообщений: ${
+							`[${new Date().toISOString()}] 📊 Найдено сообщений за период отчета: ${
 								messages.length
 							}`
 						)
 
-						// Формируем отчет
-						const report = {
-							companyName: company.nameCompany,
-							period: {
-								start: reportStart.toISOString(),
-								end: reportEnd.toISOString(),
-							},
-							stats: {
-								totalChats: chats.length,
-								totalMessages: messages.length,
-							},
+						// Считаем статистику по ответам
+						const respondedChats = chats.filter(
+							(chat: any) => chat.isResponded
+						).length
+						const unansweredChats = chats.length - respondedChats
+
+						// Считаем среднее время ответа
+						let totalResponseTime = 0
+						let respondedCount = 0
+						for (const chat of chats) {
+							const typedChat = chat as any
+							if (typedChat.firstResponseTime && typedChat.createdAt) {
+								const responseTime =
+									typedChat.firstResponseTime.getTime() -
+									typedChat.createdAt.getTime()
+								totalResponseTime += responseTime
+								respondedCount++
+							}
 						}
+						const avgResponseTime =
+							respondedCount > 0 ? totalResponseTime / respondedCount : 0
+						const avgResponseMinutes = Math.floor(avgResponseTime / (1000 * 60))
+						const avgResponseSeconds = Math.floor(
+							(avgResponseTime % (1000 * 60)) / 1000
+						)
+
+						// Формируем ссылки на чаты
+						const chatLinks = chats
+							.filter((chat: any) => !chat.isResponded)
+							.map((chat: any) => `https://wa.me/${chat.phoneNumber}`)
+							.join('\n')
+
+						// Формируем отчет
+						const reportMessage = `
+🌙 Ночной отчет от SalesTrack
+
+🗓 Период: с ${reportStart.toLocaleString('ru-RU', {
+							timeZone: 'Asia/Almaty',
+							hour: '2-digit',
+							minute: '2-digit',
+						})} до ${reportEnd.toLocaleString('ru-RU', {
+							timeZone: 'Asia/Almaty',
+							hour: '2-digit',
+							minute: '2-digit',
+						})} (Алматы)
+
+🏢 Компания: ${company.nameCompany}
+
+Статистика по обращениям вне рабочего времени:
+
+✍️ Начато диалогов: ${chats.length}
+✅ Ответ получен: ${respondedChats}
+⚠️ Без ответа: ${unansweredChats}
+⚡️ Среднее время ответа: ${avgResponseMinutes} мин. ${avgResponseSeconds} сек.
+
+${
+	chatLinks
+		? `📌 Рекомендуем проверить и ответить на непросмотренные обращения:\n${chatLinks}`
+		: ''
+}`
 
 						// Отправляем отчет в Telegram
 						if (company.telegramGroupId) {
 							const telegramService = TelegramService.getInstance()
 							await telegramService.initialize()
-
-							const reportMessage = `
-							📊 *Ночной отчет*
-							Компания: ${report.companyName}
-							Период: ${reportStart.toLocaleString('ru-RU', {
-								timeZone: 'Asia/Almaty',
-							})} - ${reportEnd.toLocaleString('ru-RU', {
-								timeZone: 'Asia/Almaty',
-							})}
-							Всего чатов: ${report.stats.totalChats}
-							Всего сообщений: ${report.stats.totalMessages}
-`
 
 							await telegramService.sendMessage(
 								company.telegramGroupId.toString(),
