@@ -6,6 +6,7 @@ import { Types } from 'mongoose'
 import { format, subDays, addHours, isWithinInterval, parseISO } from 'date-fns'
 import { toZonedTime } from 'date-fns-tz'
 import { CronJob } from 'cron'
+import { TelegramService } from '../telegram/telegramClient'
 
 interface IReportStats {
 	totalChats: number
@@ -195,10 +196,18 @@ export const initNightlyReportCron = (messageMonitor: MessageMonitor) => {
 									`[${new Date().toISOString()}] 📤 Отправка отчета в группу: ${groupId}`
 								)
 
-								await messageMonitor.sendTelegramMessage(
-									company._id,
-									reportMessage
-								)
+								// Получаем экземпляр TelegramService
+								const telegramService = TelegramService.getInstance()
+
+								// Проверяем подключение
+								const isConnected = await telegramService.isConnected()
+								if (!isConnected) {
+									await telegramService.initialize()
+								}
+
+								// Отправляем сообщение
+								await telegramService.sendMessage(groupId, reportMessage)
+
 								console.log(
 									`[${new Date().toISOString()}] ✅ Ночной отчет отправлен в Telegram для компании ${
 										company.nameCompany
