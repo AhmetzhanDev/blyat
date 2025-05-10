@@ -66,11 +66,17 @@ export const initNightlyReportCron = (messageMonitor: MessageMonitor) => {
 			// Если текущее время меньше времени запуска, используем стандартный крон
 			const shouldRunToday = almatyTime.getTime() < scheduledTime.getTime()
 
+			// Конвертируем время в UTC для отображения
+			const currentTimeUTC = new Date(almatyTime)
+			currentTimeUTC.setHours(currentTimeUTC.getHours() - 6)
+			const scheduledTimeUTC = new Date(scheduledTime)
+			scheduledTimeUTC.setHours(scheduledTimeUTC.getHours() - 6)
+
 			console.log(`[${new Date().toISOString()}] ⏱ Проверка времени запуска:`, {
-				currentTime: format(almatyTime, 'HH:mm:ss'),
-				scheduledTime: format(scheduledTime, 'HH:mm:ss'),
+				currentTime: format(currentTimeUTC, 'HH:mm:ss'),
+				scheduledTime: format(scheduledTimeUTC, 'HH:mm:ss'),
 				shouldRunToday,
-				timezone: 'Asia/Almaty',
+				timezone: 'UTC',
 			})
 
 			const job = new CronJob(
