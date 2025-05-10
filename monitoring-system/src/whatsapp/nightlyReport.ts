@@ -61,7 +61,9 @@ export const initNightlyReportCron = (messageMonitor: MessageMonitor) => {
 
 			// Создаем дату в UTC
 			const scheduledTime = new Date()
-			scheduledTime.setUTCHours(reportHours - 5, reportMinutes, 0, 0) // Вычитаем 6 часов для UTC
+			// Конвертируем время из Алматы (UTC+6) в UTC
+			const utcHours = (reportHours + 24 - 5) % 24 // Добавляем 24 и берем по модулю для корректной работы с отрицательными числами
+			scheduledTime.setUTCHours(utcHours, reportMinutes, 0, 0)
 
 			// Если текущее время меньше времени запуска, используем стандартный крон
 			// Если нет - создаем крон с немедленным запуском
@@ -72,6 +74,10 @@ export const initNightlyReportCron = (messageMonitor: MessageMonitor) => {
 				scheduledTime: format(scheduledTime, 'HH:mm:ss'),
 				shouldRunToday,
 				timezone: 'UTC',
+				almatyScheduledTime: format(
+					toZonedTime(scheduledTime, 'Asia/Almaty'),
+					'HH:mm:ss'
+				),
 			})
 
 			const job = new CronJob(
