@@ -187,27 +187,10 @@ export const initNightlyReportCron = (messageMonitor: MessageMonitor) => {
 						// Отправляем отчет в Telegram
 						if (company.telegramGroupId) {
 							try {
-								// Проверяем формат telegramGroupId
-								let groupId = company.telegramGroupId.toString()
-								if (!groupId.startsWith('-')) {
-									groupId = `-${groupId}`
-								}
-								console.log(
-									`[${new Date().toISOString()}] 📤 Отправка отчета в группу: ${groupId}`
+								await messageMonitor.sendTelegramMessage(
+									company._id,
+									reportMessage
 								)
-
-								// Получаем экземпляр TelegramService
-								const telegramService = TelegramService.getInstance()
-
-								// Проверяем подключение
-								const isConnected = await telegramService.isConnected()
-								if (!isConnected) {
-									await telegramService.initialize()
-								}
-
-								// Отправляем сообщение
-								await telegramService.sendMessage(groupId, reportMessage)
-
 								console.log(
 									`[${new Date().toISOString()}] ✅ Ночной отчет отправлен в Telegram для компании ${
 										company.nameCompany
