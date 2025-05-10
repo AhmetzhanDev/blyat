@@ -63,12 +63,12 @@ export const initNightlyReportCron = (messageMonitor: MessageMonitor) => {
 			const scheduledTime = toZonedTime(new Date(), 'Asia/Almaty')
 			scheduledTime.setHours(reportHours, reportMinutes, 0, 0)
 
-			// Если текущее время меньше времени запуска, используем стандартный крон
-			const shouldRunToday = almatyTime.getTime() < scheduledTime.getTime()
-
 			// Конвертируем только текущее время в UTC для отображения
 			const currentTimeUTC = new Date(almatyTime)
 			currentTimeUTC.setHours(currentTimeUTC.getHours() - 6)
+
+			// Сравниваем время в UTC
+			const shouldRunToday = currentTimeUTC.getTime() < scheduledTime.getTime()
 
 			console.log(`[${new Date().toISOString()}] ⏱ Проверка времени запуска:`, {
 				currentTime: format(currentTimeUTC, 'HH:mm:ss'),
@@ -77,6 +77,8 @@ export const initNightlyReportCron = (messageMonitor: MessageMonitor) => {
 				timezone: 'UTC',
 				almatyTime: format(almatyTime, 'HH:mm:ss'),
 				almatyScheduledTime: format(scheduledTime, 'HH:mm:ss'),
+				currentTimeMs: currentTimeUTC.getTime(),
+				scheduledTimeMs: scheduledTime.getTime(),
 			})
 
 			const job = new CronJob(
