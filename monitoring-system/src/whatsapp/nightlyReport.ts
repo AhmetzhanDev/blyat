@@ -91,8 +91,9 @@ export class NightlyReportManager {
 			})
 
 			// Проверяем, нужно ли запустить отчет сейчас
-			const timeDiff = reportTimeInMinutes - currentTimeInMinutes
-			const shouldRunNow = timeDiff === 0
+			// Запускаем отчет, если текущее время в пределах 2 минут от времени отчета
+			const timeDiff = Math.abs(reportTimeInMinutes - currentTimeInMinutes)
+			const shouldRunNow = timeDiff <= 2
 
 			console.log(
 				`[${new Date().toISOString()}] ⏰ Проверка времени для компании ${
@@ -139,11 +140,11 @@ export class NightlyReportManager {
 
 						// Вычисляем период отчета
 						const reportEnd = new Date(now)
-						reportEnd.setUTCHours(workStartUTC, 0, 0, 0)
+						reportEnd.setUTCHours(workStartUTC, workStartMinutes, 0, 0)
 
 						const reportStart = new Date(reportEnd)
 						reportStart.setUTCDate(reportEnd.getUTCDate() - 1)
-						reportStart.setUTCHours(workEndUTC, 0, 0, 0)
+						reportStart.setUTCHours(workEndUTC, workEndMinutes, 0, 0)
 
 						console.log(
 							`[${new Date().toISOString()}] 📊 Период отчета для компании ${
