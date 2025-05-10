@@ -57,9 +57,19 @@ export class NightlyReportManager {
 				.working_hours_end!.split(':')
 				.map(Number)
 
+			console.log(`[${new Date().toISOString()}] ⏰ Исходное рабочее время:`, {
+				start: `${workStartHours}:${workStartMinutes}`,
+				end: `${workEndHours}:${workEndMinutes}`,
+			})
+
 			// Конвертируем в UTC (Almaty UTC+6)
 			const workStartUTC = workStartHours - 6
 			const workEndUTC = workEndHours - 6
+
+			console.log(`[${new Date().toISOString()}] ⏰ Рабочее время в UTC:`, {
+				start: `${workStartUTC}:${workStartMinutes}`,
+				end: `${workEndUTC}:${workEndMinutes}`,
+			})
 
 			// Получаем текущее время в UTC
 			const now = new Date()
@@ -71,6 +81,13 @@ export class NightlyReportManager {
 			const reportHour = workStartUTC
 			const reportMinute = 0
 			const reportTimeInMinutes = reportHour * 60 + reportMinute
+
+			console.log(`[${new Date().toISOString()}] ⏰ Время отчета:`, {
+				currentTime: `${currentHour}:${currentMinute} UTC`,
+				reportTime: `${reportHour}:${reportMinute} UTC`,
+				currentTimeInMinutes,
+				reportTimeInMinutes,
+			})
 
 			// Проверяем, нужно ли запустить отчет сейчас
 			const timeDiff = reportTimeInMinutes - currentTimeInMinutes
@@ -245,6 +262,9 @@ export class NightlyReportManager {
 					cronExpression,
 					nextRun: job.nextDate().toString(),
 					shouldRunNow,
+					currentTime: `${currentHour}:${currentMinute} UTC`,
+					reportTime: `${reportHour}:${reportMinute} UTC`,
+					timeDiff,
 				}
 			)
 
