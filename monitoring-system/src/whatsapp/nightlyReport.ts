@@ -64,8 +64,8 @@ export class NightlyReportManager {
 
 			// Конвертируем в UTC (Almaty UTC+6)
 			// Для конвертации из UTC+6 в UTC просто вычитаем 6 часов
-			const workStartUTC = workStartHours - 6
-			const workEndUTC = workEndHours - 6
+			const workStartUTC = workStartHours - 5
+			const workEndUTC = workEndHours - 5
 
 			console.log(`[${new Date().toISOString()}] ⏰ Рабочее время в UTC:`, {
 				start: `${workStartUTC}:${workStartMinutes}`,
