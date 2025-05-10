@@ -223,12 +223,24 @@ export const initNightlyReportCron = (messageMonitor: MessageMonitor) => {
 				true, // start job right now
 				'Asia/Almaty' // timezone
 			)
+
 			// Проверяем, что крон действительно запущен
-			if (!job.lastDate()) {
+			if (!job) {
 				console.log(
 					`[${new Date().toISOString()}] ⚠️ Крон для компании ${
 						company.nameCompany
-					} не запустился`
+					} не создан`
+				)
+				return null
+			}
+
+			// Проверяем следующую дату запуска
+			const nextRun = job.nextDate()
+			if (!nextRun) {
+				console.log(
+					`[${new Date().toISOString()}] ⚠️ Не удалось определить следующую дату запуска для компании ${
+						company.nameCompany
+					}`
 				)
 				return null
 			}
@@ -240,6 +252,9 @@ export const initNightlyReportCron = (messageMonitor: MessageMonitor) => {
 			)
 			console.log(
 				`[${new Date().toISOString()}] ⏰ Следующий запуск в ${reportHours}:${reportMinutes} (Алматы)`
+			)
+			console.log(
+				`[${new Date().toISOString()}] 📅 Следующая дата запуска: ${nextRun.toLocaleString()}`
 			)
 
 			return job
