@@ -74,14 +74,16 @@ export const initNightlyReportCron = (messageMonitor: MessageMonitor) => {
 			const currentTimeInMinutes = currentHours * 60 + currentMinutes
 			const reportTimeInMinutes = reportHours * 60 + reportMinutes
 
-			// Если текущее время больше времени отчета, значит отчет должен быть отправлен завтра
-			const shouldRunNow = currentTimeInMinutes < reportTimeInMinutes
+			// Проверяем, что текущее время равно времени отчета
+			const timeDiff = reportTimeInMinutes - currentTimeInMinutes
+			const shouldRunNow = timeDiff === 0
 
 			console.log(`[${new Date().toISOString()}] ⏰ Проверка времени:`, {
 				currentTimeUTC: `${currentHours}:${currentMinutes}`,
 				reportTimeUTC: `${reportHours}:${reportMinutes}`,
 				currentTimeInMinutes,
 				reportTimeInMinutes,
+				timeDiff,
 				shouldRunNow,
 				almatyTime: format(almatyTime, 'HH:mm'),
 			})
@@ -130,13 +132,6 @@ export const initNightlyReportCron = (messageMonitor: MessageMonitor) => {
 						const workStartUTC = workStartHours - 5
 						const workEndUTC = workEndHours - 5
 
-						console.log(`[${new Date().toISOString()}] ⏰ UTC время:`, {
-							workStartUTC,
-							workEndUTC,
-							currentTime: now.toISOString(),
-							almatyTime: almatyTime.toISOString(),
-						})
-
 						// Конец периода - начало текущего рабочего дня
 						const reportEnd = new Date(almatyTime)
 						reportEnd.setHours(workStartUTC, workStartMinutes, 0, 0)
@@ -166,13 +161,28 @@ export const initNightlyReportCron = (messageMonitor: MessageMonitor) => {
 							companyId: new Types.ObjectId(company._id),
 							createdAt: {
 								$gte: reportStart,
-								$lt: reportEnd,
+								$lte: reportEnd, // включая конец периода
 							},
 						}).lean()
 
 						console.log(
 							`[${new Date().toISOString()}] 🔍 Найдено чатов за период: ${
 								chats.length
+							}`
+						)
+
+						// Получаем все сообщения за период для расчета среднего времени ответа
+						const messages = await WhatsappMessage.find({
+							whatsappChatId: { $in: chats.map(chat => chat._id) },
+							createdAt: {
+								$gte: reportStart,
+								$lte: reportEnd, // включая конец периода
+							},
+						}).lean()
+
+						console.log(
+							`[${new Date().toISOString()}] 📨 Найдено сообщений за период: ${
+								messages.length
 							}`
 						)
 
@@ -187,15 +197,6 @@ export const initNightlyReportCron = (messageMonitor: MessageMonitor) => {
 						stats.unansweredChats = chats.filter(
 							chat => chat.sendMessage === false
 						).length
-
-						// Получаем все сообщения за период для расчета среднего времени ответа
-						const messages = await WhatsappMessage.find({
-							whatsappChatId: { $in: chats.map(chat => chat._id) },
-							createdAt: {
-								$gte: reportStart,
-								$lt: reportEnd,
-							},
-						}).lean()
 
 						// Расчет среднего времени ответа
 						const responseTimes: number[] = []
@@ -307,19 +308,19 @@ export const initNightlyReportCron = (messageMonitor: MessageMonitor) => {
 					}
 				},
 				null,
-				true, // запускаем сразу
+				false, // не запускаем сразу
 				'UTC' // используем UTC вместо Asia/Almaty
 			)
 
 			// Запускаем крон
 			job.start()
 
-			// Если время еще не наступило, запускаем отчет сразу
+			// Если текущее время равно времени отчета, запускаем отчет сразу
 			if (shouldRunNow) {
 				console.log(
 					`[${new Date().toISOString()}] ⚡️ Запуск отчета немедленно для компании ${
 						company.nameCompany
-					}`
+					} (текущее время совпадает с временем отчета)`
 				)
 				job.fireOnTick()
 			}
@@ -331,6 +332,7 @@ export const initNightlyReportCron = (messageMonitor: MessageMonitor) => {
 				cronExpression,
 				companyName: company.nameCompany,
 				shouldRunNow,
+				timeDiff,
 			})
 
 			return job
