@@ -63,19 +63,27 @@ export const initNightlyReportCron = (messageMonitor: MessageMonitor) => {
 			// Проверяем, не пора ли запустить отчет сейчас
 			const now = new Date()
 			const almatyTime = toZonedTime(now, 'Asia/Almaty')
+
+			// Получаем текущее время в UTC
 			const [currentHours, currentMinutes] = [
-				almatyTime.getHours(),
-				almatyTime.getMinutes(),
+				now.getUTCHours(),
+				now.getUTCMinutes(),
 			]
 
-			const shouldRunNow =
-				currentHours < reportHours ||
-				(currentHours === reportHours && currentMinutes < reportMinutes)
+			// Конвертируем время в минуты для удобного сравнения
+			const currentTimeInMinutes = currentHours * 60 + currentMinutes
+			const reportTimeInMinutes = reportHours * 60 + reportMinutes
+
+			// Если текущее время больше времени отчета, значит отчет должен быть отправлен завтра
+			const shouldRunNow = currentTimeInMinutes < reportTimeInMinutes
 
 			console.log(`[${new Date().toISOString()}] ⏰ Проверка времени:`, {
-				currentTime: `${currentHours}:${currentMinutes}`,
-				reportTime: `${reportHours}:${reportMinutes}`,
+				currentTimeUTC: `${currentHours}:${currentMinutes}`,
+				reportTimeUTC: `${reportHours}:${reportMinutes}`,
+				currentTimeInMinutes,
+				reportTimeInMinutes,
 				shouldRunNow,
+				almatyTime: format(almatyTime, 'HH:mm'),
 			})
 
 			const job = new CronJob(
@@ -299,8 +307,8 @@ export const initNightlyReportCron = (messageMonitor: MessageMonitor) => {
 					}
 				},
 				null,
-				false,
-				'Asia/Almaty'
+				true, // запускаем сразу
+				'UTC' // используем UTC вместо Asia/Almaty
 			)
 
 			// Запускаем крон
