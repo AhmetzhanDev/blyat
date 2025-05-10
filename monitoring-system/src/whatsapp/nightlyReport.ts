@@ -59,9 +59,20 @@ export const initNightlyReportCron = (messageMonitor: MessageMonitor) => {
 				cronExpression,
 				async () => {
 					console.log(
-						`[${new Date().toISOString()}] 📊 Начало формирования ночного отчета для компании ${
+						`[${new Date().toISOString()}] 🚀 Запуск ночного отчета для компании ${
 							company.nameCompany
 						}`
+					)
+					console.log(
+						`[${new Date().toISOString()}] 🔍 Проверка данных компании:`,
+						{
+							id: company._id,
+							name: company.nameCompany,
+							phoneNumber: company.phoneNumber,
+							telegramGroupId: company.telegramGroupId,
+							working_hours_start: company.working_hours_start,
+							working_hours_end: company.working_hours_end,
+						}
 					)
 
 					try {
@@ -241,21 +252,26 @@ export const initNightlyReportCron = (messageMonitor: MessageMonitor) => {
 				'Asia/Almaty' // timezone
 			)
 
-			// Проверяем, что крон действительно запущен
+			// Проверяем, что крон создался
 			if (!job) {
 				console.log(
-					`[${new Date().toISOString()}] ⚠️ Крон для компании ${
+					`[${new Date().toISOString()}] ⚠️ Не удалось создать крон для компании ${
 						company.nameCompany
-					} не создан`
+					}`
 				)
 				return null
 			}
 
-			// Проверяем следующую дату запуска
-			const nextRun = job.nextDate()
-			if (!nextRun) {
+			// Проверяем, что крон действительно запущен
+			console.log(`[${new Date().toISOString()}] 🔍 Проверка статуса крона:`, {
+				lastDate: job.lastDate(),
+				nextDate: job.nextDate(),
+			})
+
+			// Проверяем, что крон запустился
+			if (!job.lastDate()) {
 				console.log(
-					`[${new Date().toISOString()}] ⚠️ Не удалось определить следующую дату запуска для компании ${
+					`[${new Date().toISOString()}] ⚠️ Крон не запустился для компании ${
 						company.nameCompany
 					}`
 				)
@@ -271,7 +287,9 @@ export const initNightlyReportCron = (messageMonitor: MessageMonitor) => {
 				`[${new Date().toISOString()}] ⏰ Следующий запуск в ${reportHours}:${reportMinutes} (Алматы)`
 			)
 			console.log(
-				`[${new Date().toISOString()}] 📅 Следующая дата запуска: ${nextRun.toLocaleString()}`
+				`[${new Date().toISOString()}] 📅 Следующая дата запуска: ${job
+					.nextDate()
+					.toLocaleString()}`
 			)
 
 			return job
