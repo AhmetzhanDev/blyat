@@ -23,7 +23,7 @@ export const sendPhoneNumber = async (
 		// Проверяем существование пользователя
 		let user = await UserModel.findOne({ phoneNumber })
 
-		if (user) {
+		if (user && user.isVerified) {
 			res.status(400).json({
 				success: false,
 				message: 'Пользователь с таким номером телефона уже существует',
