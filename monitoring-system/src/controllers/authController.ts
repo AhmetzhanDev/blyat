@@ -23,6 +23,15 @@ export const sendPhoneNumber = async (
 		// Проверяем существование пользователя
 		let user = await UserModel.findOne({ phoneNumber })
 
+		if (user) {
+			res.status(400).json({
+				success: false,
+				message: 'Пользователь с таким номером телефона уже существует',
+				errorCode: 'USER_EXISTS',
+			})
+			return
+		}
+
 		if (!user) {
 			// Создаем временного пользователя
 			user = new UserModel({
