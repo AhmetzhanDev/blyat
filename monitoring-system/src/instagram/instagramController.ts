@@ -17,18 +17,21 @@ export class InstagramController {
 	public async handleAuthCallback(req: Request, res: Response) {
 		try {
 			console.log(
-				`[${new Date().toISOString()}] [Instagram] Обработка callback...`
+				`[${new Date().toISOString()}] [Instagram] Processing callback...`
 			)
 
-			const { code, userId, redirectUri } = req.body
-			console.log(
-				`[${new Date().toISOString()}] [Instagram] Получены данные:`,
-				{ code, userId, redirectUri }
-			)
+			const { code, userId } = req.body
+			const redirectUri = process.env.IG_REDIRECT_URI
+
+			console.log(`[${new Date().toISOString()}] [Instagram] Received data:`, {
+				code,
+				userId,
+				redirectUri,
+			})
 
 			if (!code) {
 				console.log(
-					`[${new Date().toISOString()}] [Instagram] Ошибка: отсутствует код авторизации`
+					`[${new Date().toISOString()}] [Instagram] Error: missing authorization code`
 				)
 				return res.status(400).json({
 					success: false,
@@ -38,7 +41,7 @@ export class InstagramController {
 
 			if (!userId) {
 				console.log(
-					`[${new Date().toISOString()}] [Instagram] Ошибка: отсутствует ID пользователя`
+					`[${new Date().toISOString()}] [Instagram] Error: missing user ID`
 				)
 				return res.status(400).json({
 					success: false,
@@ -46,9 +49,20 @@ export class InstagramController {
 				})
 			}
 
-			// Обмен на access_token и сохранение данных пользователя
+			if (!redirectUri) {
+				console.log(
+					`[${new Date().toISOString()}] [Instagram] Error: missing redirect URI in environment`
+				)
+				return res.status(500).json({
+					success: false,
+					error: 'Instagram configuration error',
+					details: 'Missing redirect URI configuration',
+				})
+			}
+
+			// Exchange code for token
 			console.log(
-				`[${new Date().toISOString()}] [Instagram] Обмен кода на токен...`
+				`[${new Date().toISOString()}] [Instagram] Exchanging code for token...`
 			)
 			const result = await instagramService.exchangeCodeForToken(
 				code,
@@ -62,14 +76,15 @@ export class InstagramController {
 				!result.user_id
 			) {
 				console.log(
-					`[${new Date().toISOString()}] [Instagram] Ошибка: неверный ответ от Instagram API`
+					`[${new Date().toISOString()}] [Instagram] Error: invalid response from Instagram API`,
+					result
 				)
 				throw new Error('Invalid response from Instagram API')
 			}
 
-			// Обновляем статус пользователя
+			// Update user status
 			console.log(
-				`[${new Date().toISOString()}] [Instagram] Обновление данных пользователя...`
+				`[${new Date().toISOString()}] [Instagram] Updating user data...`
 			)
 			await UserModel.updateOne(
 				{ _id: userId },
@@ -82,7 +97,7 @@ export class InstagramController {
 			)
 
 			console.log(
-				`[${new Date().toISOString()}] [Instagram] Успешное подключение Instagram`
+				`[${new Date().toISOString()}] [Instagram] Instagram successfully connected`
 			)
 			return res.status(200).json({
 				success: true,
@@ -93,14 +108,27 @@ export class InstagramController {
 			})
 		} catch (error: any) {
 			console.error(
-				`[${new Date().toISOString()}] [Instagram] Ошибка обработки callback:`,
+				`[${new Date().toISOString()}] [Instagram] Callback processing error:`,
 				error
 			)
-			return res.status(500).json({
+
+			// Enhanced error response with safe error handling
+			const errorResponse = {
 				success: false,
 				error: 'Failed to process Instagram callback',
-				details: error.message,
-			})
+				details: error?.message || 'Unknown error occurred',
+				type: error?.constructor?.name || 'UnknownError',
+			}
+
+			// Safely handle axios error responses
+			if (error?.response?.data) {
+				errorResponse.details =
+					typeof error.response.data === 'string'
+						? error.response.data
+						: JSON.stringify(error.response.data)
+			}
+
+			return res.status(500).json(errorResponse)
 		}
 	}
 

@@ -233,11 +233,27 @@ export class NightlyReportManager {
 						let totalResponseTime = 0
 						let respondedCount = 0
 						for (const chat of chats) {
-							const typedChat = chat as any
-							if (typedChat.firstResponseTime && typedChat.createdAt) {
+							const chatMessages = messages.filter(
+								m => m.whatsappChatId.toString() === chat._id.toString()
+							)
+							const firstClientMsg = chatMessages.find(m => !m.isEcho)
+							const firstManagerMsg = chatMessages.find(
+								m =>
+									m.isEcho &&
+									firstClientMsg &&
+									m.createdAt > firstClientMsg.createdAt
+							)
+							if (firstClientMsg && firstManagerMsg) {
 								const responseTime =
-									typedChat.firstResponseTime.getTime() -
-									typedChat.createdAt.getTime()
+									firstManagerMsg.createdAt.getTime() -
+									firstClientMsg.createdAt.getTime()
+								console.log(
+									`[${new Date().toISOString()}] ⏱️ Чат ${
+										chat.chatId
+									}: firstClientMsg=${firstClientMsg.createdAt.toISOString()}, firstManagerMsg=${firstManagerMsg.createdAt.toISOString()}, responseTime=${responseTime} мс (${Math.round(
+										responseTime / 1000
+									)} сек)`
+								)
 								totalResponseTime += responseTime
 								respondedCount++
 							}
@@ -250,17 +266,21 @@ export class NightlyReportManager {
 						)
 
 						// Формируем ссылки на чаты
-						const chatLinks = chats
-							.filter((chat: any) => {
-								const chatMessages = messages.filter(
-									m => m.whatsappChatId.toString() === chat._id.toString()
-								)
-								return (
-									chatMessages.length > 0 && !chatMessages.some(m => m.isEcho)
-								)
-							})
-							.map((chat: any) => `https://wa.me/${chat.chatId}`)
-							.join('\n')
+						const chatLinks = Array.from(
+							new Set(
+								chats
+									.filter((chat: any) => {
+										const chatMessages = messages.filter(
+											m => m.whatsappChatId.toString() === chat._id.toString()
+										)
+										return (
+											chatMessages.length > 0 &&
+											!chatMessages.some(m => m.isEcho)
+										)
+									})
+									.map((chat: any) => `https://wa.me/${chat.chatId}`)
+							)
+						).join('\n')
 
 						// Формируем отчет
 						const reportMessage = `

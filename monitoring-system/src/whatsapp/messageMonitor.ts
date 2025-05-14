@@ -504,19 +504,26 @@ export class MessageMonitor {
 			throw new Error(`Компания с ID ${companyId} не найдена`)
 		}
 
-		// Получаем все чаты за сегодня
-		const today = new Date()
-		today.setHours(0, 0, 0, 0)
+		// Формируем период отчёта: с 3:00 предыдущего дня до 3:00 текущего дня
+		const now = new Date()
+		const reportEnd = new Date(now)
+		reportEnd.setHours(3, 0, 0, 0)
+		if (now < reportEnd) {
+			reportEnd.setDate(reportEnd.getDate() - 1)
+		}
+		const reportStart = new Date(reportEnd)
+		reportStart.setDate(reportStart.getDate() - 1)
 
+		// Получаем все чаты за период
 		const chats = await WhatsappChat.find({
 			companyId: company._id,
-			createdAt: { $gte: today },
+			createdAt: { $gte: reportStart, $lt: reportEnd },
 		})
 
-		// Получаем все сообщения за сегодня
+		// Получаем все сообщения за период
 		const messages = await WhatsappMessage.find({
 			whatsappChatId: { $in: chats.map(chat => chat._id) },
-			createdAt: { $gte: today },
+			createdAt: { $gte: reportStart, $lt: reportEnd },
 		})
 
 		// Статистика
@@ -529,13 +536,23 @@ export class MessageMonitor {
 			const chatMessages = messages.filter(m =>
 				m.whatsappChatId.equals(chat._id)
 			)
-			for (let i = 0; i < chatMessages.length - 1; i++) {
-				if (!chatMessages[i].isEcho && chatMessages[i + 1].isEcho) {
-					const responseTime =
-						chatMessages[i + 1].createdAt.getTime() -
-						chatMessages[i].createdAt.getTime()
-					responseTimes.push(responseTime)
-				}
+			const firstClientMsg = chatMessages.find(m => !m.isEcho)
+			const firstManagerMsg = chatMessages.find(
+				m =>
+					m.isEcho && firstClientMsg && m.createdAt > firstClientMsg.createdAt
+			)
+			if (firstClientMsg && firstManagerMsg) {
+				const responseTime =
+					firstManagerMsg.createdAt.getTime() -
+					firstClientMsg.createdAt.getTime()
+				console.log(
+					`[${new Date().toISOString()}] ⏱️ Чат ${
+						chat.chatId
+					}: firstClientMsg=${firstClientMsg.createdAt.toISOString()}, firstManagerMsg=${firstManagerMsg.createdAt.toISOString()}, responseTime=${responseTime} мс (${Math.round(
+						responseTime / 1000
+					)} сек)`
+				)
+				responseTimes.push(responseTime)
 			}
 		}
 
@@ -578,7 +595,9 @@ export class MessageMonitor {
 			`⚠️ <b>Диалогов без ответа:</b> ${unansweredChats}\n` +
 			`🕓 <b>Просроченных ответов (больше 2 мин):</b> ${overdueResponses}\n\n` +
 			`📌 <b>Список непросмотренных чатов:</b>\n\n` +
-			`${unviewedChats.map(chat => `https://wa.me/${chat.chatId}`).join('\n')}`
+			`${Array.from(
+				new Set(unviewedChats.map(chat => `https://wa.me/${chat.chatId}`))
+			).join('\n')}`
 
 		console.log(
 			`[${new Date().toISOString()}] ✅ Отчет сгенерирован для компании ${

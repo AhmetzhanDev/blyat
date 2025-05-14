@@ -55,7 +55,12 @@ const sendNotClosedChatsMessage = async (messageMonitor: MessageMonitor) => {
 			companyId: company._id,
 		})
 
-		if (chats.length === 0) {
+		// Убираем дубликаты по chatId
+		const uniqueChats = Array.from(
+			new Map(chats.map(chat => [chat.chatId, chat])).values()
+		)
+
+		if (uniqueChats.length === 0) {
 			console.log(
 				`Нет не закрытых чатов для компании ${company.nameCompany || 'Unknown'}`
 			)
@@ -65,7 +70,7 @@ const sendNotClosedChatsMessage = async (messageMonitor: MessageMonitor) => {
 		let message = `Список чатов с не закрытыми сделками:\n\n`
 
 		let i = 1
-		for (const chat of chats) {
+		for (const chat of uniqueChats) {
 			message += `${i}) https://wa.me/${chat.chatId}\n`
 			i++
 		}

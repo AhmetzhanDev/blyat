@@ -27,142 +27,154 @@ export class InstagramService {
 		this.telegramService = TelegramService.getInstance()
 	}
 
-	async exchangeCodeForToken(code: string, redirectUri?: string) {
-		try {
-			console.log(
-				`[${new Date().toISOString()}] [Instagram] Начало обмена кода на токен`
-			)
-			console.log(
-				`[${new Date().toISOString()}] [Instagram] Используется redirect URI:`,
-				redirectUri || process.env.IG_REDIRECT_URI
-			)
-
-			const { access_token, user_id } = await this.sendFormData(
-				code,
-				redirectUri
-			)
-			console.log(
-				`[${new Date().toISOString()}] [Instagram] Получены access_token и user_id`
-			)
-
-			// Получаем ID пользователя и список страниц
-			console.log(
-				`[${new Date().toISOString()}] [Instagram] Получение информации о бизнес-аккаунте`
-			)
-			const userUrl = `${this.apiUrl}/me?access_token=${access_token}`
-			console.log(
-				`[${new Date().toISOString()}] [Instagram] URL запроса:`,
-				userUrl
-			)
-
-			const userResponse = await axios.get(userUrl)
-			console.log(
-				`[${new Date().toISOString()}] [Instagram] Ответ от API:`,
-				userResponse?.data
-			)
-
-			if (!userResponse || !userResponse.data) {
-				throw new Error('No connected Instagram business accounts')
-			}
-
-			const page = userResponse.data
-			const pageAccessToken = page.access_token
-			const pageId = page.id
-
-			// Получаем Instagram Business ID
-			console.log(
-				`[${new Date().toISOString()}] [Instagram] Получение Instagram Business ID`
-			)
-			const igUrl = `${this.apiUrl}/${user_id}?fields=instagram_business_account&access_token=${access_token}`
-			console.log(
-				`[${new Date().toISOString()}] [Instagram] URL запроса:`,
-				igUrl
-			)
-
-			const igResponse = await axios.get(igUrl)
-			console.log(
-				`[${new Date().toISOString()}] [Instagram] Ответ от API:`,
-				igResponse?.data
-			)
-
-			if (
-				!igResponse ||
-				!igResponse.data ||
-				!igResponse.data.instagram_business_account
-			) {
-				throw new Error('Failed to retrieve Instagram Business Account ID')
-			}
-
-			const instagramAccountId = igResponse.data.instagram_business_account.id
-			console.log(
-				`[${new Date().toISOString()}] [Instagram] Успешно получен Instagram Account ID:`,
-				instagramAccountId
-			)
-
-			return {
-				access_token,
-				user_id,
-				instagramAccountId,
-				message: 'User authenticated and saved successfully',
-			}
-		} catch (error: any) {
-			console.error(
-				`[${new Date().toISOString()}] [Instagram] Ошибка аутентификации:`,
-				error
-			)
-			console.error(
-				`[${new Date().toISOString()}] [Instagram] Ответ об ошибке:`,
-				error.response?.data
-			)
-			throw new Error(`Authentication failed: ${error.message}`)
+	async exchangeCodeForToken(code: string, redirectUri: string) {
+		// Validate inputs
+		if (!code) {
+			throw new Error('Authorization code is required')
 		}
-	}
+		if (!redirectUri) {
+			throw new Error('Redirect URI is required')
+		}
+		if (!process.env.IG_CLIENT_ID || !process.env.IG_CLIENT_SECRET) {
+			throw new Error('Instagram client credentials are not configured')
+		}
 
-	async sendFormData(code: string, redirectUri?: string) {
 		console.log(
-			`[${new Date().toISOString()}] [Instagram] Отправка данных формы`
+			`[${new Date().toISOString()}] [Instagram] Initiating token exchange`
 		)
 		console.log(
-			`[${new Date().toISOString()}] [Instagram] Используется redirect URI:`,
-			redirectUri || process.env.IG_REDIRECT_URI
+			`[${new Date().toISOString()}] [Instagram] Using redirect URI:`,
+			redirectUri
 		)
 
 		const formData = new FormData()
-		formData.append('client_id', this.appId!)
-		formData.append('client_secret', this.appSecret!)
+		formData.append('client_id', process.env.IG_CLIENT_ID!)
+		formData.append('client_secret', process.env.IG_CLIENT_SECRET!)
 		formData.append('grant_type', 'authorization_code')
-		formData.append('redirect_uri', redirectUri || this.redirectUri!)
+		formData.append('redirect_uri', redirectUri)
 		formData.append('code', code)
 
 		try {
+			console.log(
+				`[${new Date().toISOString()}] [Instagram] Sending token exchange request`
+			)
+
 			const response = await axios.post(this.apiUrl_TokenLive, formData, {
 				headers: {
 					...formData.getHeaders(),
 				},
 			})
 
-			if (
-				!response.data ||
-				!response.data.access_token ||
-				!response.data.user_id
-			) {
-				throw new Error('Invalid response from Instagram API')
+			console.log(
+				`[${new Date().toISOString()}] [Instagram] Token exchange response:`,
+				response.data
+			)
+
+			if (!response.data) {
+				throw new Error('Empty response from Instagram API')
 			}
 
-			return {
-				access_token: response.data.access_token,
-				user_id: response.data.user_id,
+			if (!response.data.access_token) {
+				throw new Error('No access token in Instagram response')
+			}
+
+			if (!response.data.user_id) {
+				throw new Error('No user ID in Instagram response')
+			}
+
+			try {
+				// Get Instagram Business Account ID
+				const longLivedToken = await this.exchangeForLongLivedToken(
+					response.data.access_token
+				)
+				const instagramAccountId = await this.getInstagramBusinessAccount(
+					longLivedToken
+				)
+
+				return {
+					access_token: longLivedToken,
+					user_id: response.data.user_id,
+					instagramAccountId,
+				}
+			} catch (businessError: any) {
+				console.error(
+					`[${new Date().toISOString()}] [Instagram] Business account setup error:`,
+					businessError?.message || businessError
+				)
+				// Return basic token response if business account setup fails
+				return {
+					access_token: response.data.access_token,
+					user_id: response.data.user_id,
+				}
 			}
 		} catch (error: any) {
 			console.error(
-				`[${new Date().toISOString()}] [Instagram] Ошибка отправки данных формы:`,
-				error
+				`[${new Date().toISOString()}] [Instagram] Token exchange error:`,
+				error?.response?.data || error?.message || error
 			)
+
+			// Enhance error message with API response details if available
+			const errorMessage =
+				error?.response?.data?.error_message ||
+				error?.response?.data?.error?.message ||
+				error?.message ||
+				'Unknown error during token exchange'
+
+			throw new Error(errorMessage)
+		}
+	}
+
+	private async exchangeForLongLivedToken(
+		shortLivedToken: string
+	): Promise<string> {
+		try {
+			const response = await axios.get(
+				'https://graph.instagram.com/access_token',
+				{
+					params: {
+						grant_type: 'ig_exchange_token',
+						client_secret: process.env.IG_CLIENT_SECRET,
+						access_token: shortLivedToken,
+					},
+				}
+			)
+
+			if (!response.data?.access_token) {
+				throw new Error('Failed to get long-lived token')
+			}
+
+			return response.data.access_token
+		} catch (error: any) {
 			console.error(
-				`[${new Date().toISOString()}] [Instagram] Ответ об ошибке:`,
-				error.response?.data
+				`[${new Date().toISOString()}] [Instagram] Long-lived token exchange error:`,
+				error.response?.data || error.message
 			)
-			throw new Error(`Failed to exchange code for token: ${error.message}`)
+			throw error
+		}
+	}
+
+	private async getInstagramBusinessAccount(
+		accessToken: string
+	): Promise<string> {
+		try {
+			const response = await axios.get(`${this.apiUrl}/me/accounts`, {
+				params: {
+					access_token: accessToken,
+					fields: 'instagram_business_account',
+				},
+			})
+
+			if (!response.data?.data?.[0]?.instagram_business_account?.id) {
+				throw new Error('No Instagram business account found')
+			}
+
+			return response.data.data[0].instagram_business_account.id
+		} catch (error: any) {
+			console.error(
+				`[${new Date().toISOString()}] [Instagram] Business account fetch error:`,
+				error.response?.data || error.message
+			)
+			throw error
 		}
 	}
 
