@@ -245,8 +245,14 @@ export class InstagramService {
 						})
 
 						if (companySettings?.telegramGroupId) {
+							// Convert to string and ensure it has a minus sign
+							let groupId = companySettings.telegramGroupId.toString()
+							if (!groupId.startsWith('-')) {
+								groupId = `-${groupId}`
+							}
+							
 							await this.telegramService.sendMessage(
-								companySettings.telegramGroupId,
+								groupId,
 								`📱 Instagram Message from ${chat.userName || senderId}:\n${message.text}`
 							)
 						}
