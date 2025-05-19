@@ -37,7 +37,7 @@ export class InstagramService {
 		if (!redirectUri) {
 			throw new Error('Redirect URI is required')
 		}
-		if (!process.env.IG_CLIENT_ID || !process.env.IG_CLIENT_SECRET) {
+		if (!process.env.IG_APP_SECRET || !process.env.IG_APP_SECRET) {
 			throw new Error('Instagram client credentials are not configured')
 		}
 
@@ -51,7 +51,7 @@ export class InstagramService {
 
 		const formData = new FormData()
 		formData.append('client_id', process.env.IG_CLIENT_ID!)
-		formData.append('client_secret', process.env.IG_CLIENT_SECRET!)
+		formData.append('client_secret', process.env.IG_APP_SECRET!)
 		formData.append('grant_type', 'authorization_code')
 		formData.append('redirect_uri', redirectUri)
 		formData.append('code', code)
@@ -135,7 +135,7 @@ export class InstagramService {
 				{
 					params: {
 						grant_type: 'ig_exchange_token',
-						client_secret: process.env.IG_CLIENT_SECRET,
+						client_secret: process.env.IG_APP_SECRET,
 						access_token: shortLivedToken,
 					},
 				}
