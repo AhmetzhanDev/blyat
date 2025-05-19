@@ -2,6 +2,10 @@ import { Request, Response } from 'express'
 import dotenv from 'dotenv'
 import { InstagramService } from './instagramService'
 import { UserModel } from '../models/User'
+import { InstagramAccountModel } from '../models/InstagramAccount'
+import { CompanySettings } from '../models/CompanySettings'
+import { AuthRequest } from '../middlewares/authMiddleware'
+
 dotenv.config()
 
 const instagramService = new InstagramService()
@@ -82,6 +86,29 @@ export class InstagramController {
 				throw new Error('Invalid response from Instagram API')
 			}
 
+			// Get user's company settings
+			const companySettings = await CompanySettings.findOne({ userId })
+			if (!companySettings) {
+				throw new Error('Company settings not found')
+			}
+
+			// Create or update Instagram account
+			const instagramAccount = await InstagramAccountModel.findOneAndUpdate(
+				{ userId },
+				{
+					userId,
+					companyName: companySettings.nameCompany,
+					companyId: companySettings.id,
+					avgResponseTime: companySettings.managerResponse || 5,
+					secondTouch: false,
+					instagramUsername: companySettings.nameCompany,
+					accessToken: result.access_token,
+					instagramUserId: result.user_id,
+					instagramAccountId: result.instagramAccountId,
+				},
+				{ upsert: true, new: true }
+			)
+
 			// Update user status
 			console.log(
 				`[${new Date().toISOString()}] [Instagram] Updating user data...`
@@ -96,6 +123,16 @@ export class InstagramController {
 				}
 			)
 
+			// Update company settings
+			await CompanySettings.updateOne(
+				{ userId },
+				{
+					instagramUserId: result.user_id,
+					accessToken: result.access_token,
+					messanger: 'instagram'
+				}
+			)
+
 			console.log(
 				`[${new Date().toISOString()}] [Instagram] Instagram successfully connected`
 			)
@@ -104,6 +141,7 @@ export class InstagramController {
 				message: 'Instagram successfully connected',
 				data: {
 					instagramAccountId: result.instagramAccountId,
+					account: instagramAccount
 				},
 			})
 		} catch (error: any) {
@@ -112,7 +150,6 @@ export class InstagramController {
 				error
 			)
 
-			// Enhanced error response with safe error handling
 			const errorResponse = {
 				success: false,
 				error: 'Failed to process Instagram callback',
@@ -120,7 +157,6 @@ export class InstagramController {
 				type: error?.constructor?.name || 'UnknownError',
 			}
 
-			// Safely handle axios error responses
 			if (error?.response?.data) {
 				errorResponse.details =
 					typeof error.response.data === 'string'
@@ -133,31 +169,84 @@ export class InstagramController {
 	}
 
 	public async handleMessageWebhook(req: Request, res: Response) {
-		// Обрабатываем полученные сообщения
-		await instagramService.handleMessage(req.body)
-
-		// res.sendStatus(200).send('Webhook received');
-		return 'Webhook received'
+		try {
+			await instagramService.handleMessage(req.body)
+			res.status(200).send('Webhook received')
+		} catch (error) {
+			console.error('Error handling webhook:', error)
+			res.status(500).send('Error processing webhook')
+		}
 	}
 
-	public handleVerifyWebhook(
-		req: Request,
-		res: Response
-		// @Query('hub.mode') mode: string,
-		// @Query('hub.challenge') challenge: string,
-		// @Query('hub.verify_token') verifyToken: string,
-	) {
+	public handleVerifyWebhook(req: Request, res: Response) {
 		const mode = req.query['hub.mode']
 		const challenge = req.query['hub.challenge']
 		const verifyToken = req.query['hub.verify_token']
 
-		console.log('GOT ', verifyToken)
-		console.log('Ned ', process.env.IG_VERIFY_TOKEN)
-		console.log(challenge, verifyToken === process.env.IG_VERIFY_TOKEN)
-		if (verifyToken === process.env.IG_VERIFY_TOKEN) {
-			res.send(challenge)
-			return challenge // Возвращаем challenge для подтверждения
+		if (mode === 'subscribe' && verifyToken === process.env.IG_VERIFY_TOKEN) {
+			res.status(200).send(challenge)
+		} else {
+			res.status(403).send('Verification failed')
 		}
-		return 'Invalid verification token'
+	}
+
+	public async getInstagramAccounts(req: AuthRequest, res: Response) {
+		try {
+			const userId = req.user?.id
+			if (!userId) {
+				return res.status(401).json({ message: 'Unauthorized' })
+			}
+
+			const accounts = await InstagramAccountModel.find({ userId })
+			res.json(accounts)
+		} catch (error) {
+			console.error('Error fetching Instagram accounts:', error)
+			res.status(500).json({ message: 'Error fetching accounts' })
+		}
+	}
+
+	public async deleteInstagramAccount(req: AuthRequest, res: Response) {
+		try {
+			const userId = req.user?.id
+			const { accountId } = req.params
+
+			if (!userId) {
+				return res.status(401).json({ message: 'Unauthorized' })
+			}
+
+			const account = await InstagramAccountModel.findOneAndDelete({
+				_id: accountId,
+				userId
+			})
+
+			if (!account) {
+				return res.status(404).json({ message: 'Account not found' })
+			}
+
+			// Update user and company settings
+			await UserModel.updateOne(
+				{ _id: userId },
+				{
+					addedInstagram: false,
+					instagramAccessToken: null,
+					instagramUserId: null,
+					instagramAccountId: null
+				}
+			)
+
+			await CompanySettings.updateOne(
+				{ userId },
+				{
+					instagramUserId: null,
+					accessToken: null,
+					messanger: 'whatsapp'
+				}
+			)
+
+			res.json({ message: 'Account deleted successfully' })
+		} catch (error) {
+			console.error('Error deleting Instagram account:', error)
+			res.status(500).json({ message: 'Error deleting account' })
+		}
 	}
 }

@@ -7,6 +7,8 @@ import { MessageMonitor } from '../whatsapp/messageMonitor'
 import { CompanySettings } from '../models/CompanySettings'
 import { InstagramChat } from '../models/InstagramChat'
 import { InstagramMessage } from '../models/InstagramMessage'
+import { InstagramAccountModel, IInstagramAccount } from '../models/InstagramAccount'
+import { Types } from 'mongoose'
 
 dotenv.config()
 
@@ -179,20 +181,171 @@ export class InstagramService {
 	}
 
 	async handleMessage(body: any) {
-		console.log(`[${new Date().toISOString()}] [Instagram] Получен webhook`)
-		if (body.entry) {
-			body.entry.forEach((entry: any) => {
-				entry.messaging?.forEach(async (event: any) => {
-					console.log(
-						`[${new Date().toISOString()}] [Instagram] Новое сообщение от ${
-							event.sender.id
-						}: ${event.message.text}`
-					)
-					// Обработка сообщения
-				})
-			})
+		console.log(`[${new Date().toISOString()}] [Instagram] Received webhook`)
+		
+		if (!body.entry) {
+			return { status: 'success', message: 'No entries in webhook' }
 		}
+
+		for (const entry of body.entry) {
+			if (!entry.messaging) continue
+
+			for (const event of entry.messaging) {
+				try {
+					const senderId = event.sender.id
+					const message = event.message
+
+					if (!message || !message.text) continue
+
+					console.log(
+						`[${new Date().toISOString()}] [Instagram] New message from ${senderId}: ${message.text}`
+					)
+
+					// Find the Instagram account
+					const instagramAccount = await InstagramAccountModel.findOne({
+						instagramUserId: entry.id
+					})
+
+					if (!instagramAccount) {
+						console.log(`[${new Date().toISOString()}] [Instagram] Account not found for user ${entry.id}`)
+						continue
+					}
+
+					// Find or create chat
+					let chat = await InstagramChat.findOne({
+						chatId: senderId,
+						companyId: instagramAccount.companyId
+					})
+
+					if (!chat) {
+						// Get user info from Instagram
+						const userInfo = await this.getUserInfo(senderId, instagramAccount.accessToken)
+						
+						chat = await InstagramChat.create({
+							chatId: senderId,
+							companyId: instagramAccount.companyId,
+							isClosed: false,
+							sendMessage: true,
+							userName: userInfo.username,
+							name: userInfo.name
+						})
+					}
+
+					// Save message
+					await InstagramMessage.create({
+						isEcho: false,
+						text: message.text,
+						instagramChatId: chat._id
+					})
+
+					// Send to Telegram if configured
+					if (instagramAccount.secondTouch) {
+						const companySettings = await CompanySettings.findOne({
+							id: instagramAccount.companyId
+						})
+
+						if (companySettings?.telegramGroupId) {
+							await this.telegramService.sendMessage(
+								companySettings.telegramGroupId,
+								`📱 Instagram Message from ${chat.userName || senderId}:\n${message.text}`
+							)
+						}
+					}
+
+					// Send auto-response if configured
+					if (instagramAccount.avgResponseTime > 0) {
+						this.scheduleAutoResponse(chat._id, instagramAccount)
+					}
+				} catch (error) {
+					console.error(
+						`[${new Date().toISOString()}] [Instagram] Error processing message:`,
+						error
+					)
+				}
+			}
+		}
+
 		return { status: 'success' }
+	}
+
+	private async getUserInfo(userId: string, accessToken: string) {
+		try {
+			const response = await axios.get(`${this.apiUrl}/${userId}`, {
+				params: {
+					access_token: accessToken,
+					fields: 'username,name'
+				}
+			})
+
+			return {
+				username: response.data.username,
+				name: response.data.name
+			}
+		} catch (error) {
+			console.error('Error fetching user info:', error)
+			return {
+				username: userId,
+				name: userId
+			}
+		}
+	}
+
+	private scheduleAutoResponse(chatId: Types.ObjectId, account: IInstagramAccount) {
+		const timerId = `instagram_${chatId.toString()}`
+		
+		// Clear existing timer if any
+		if (this.activeTimers.has(timerId)) {
+			clearTimeout(this.activeTimers.get(timerId))
+		}
+
+		// Schedule new auto-response
+		const timer = setTimeout(async () => {
+			try {
+				const chat = await InstagramChat.findById(chatId)
+				if (!chat || chat.isClosed) return
+
+				// Send auto-response message
+				await this.sendMessage(
+					chat.chatId,
+					account.accessToken,
+					'Thank you for your message. Our team will get back to you shortly.'
+				)
+
+				// Save the auto-response message
+				await InstagramMessage.create({
+					isEcho: true,
+					text: 'Thank you for your message. Our team will get back to you shortly.',
+					instagramChatId: chatId
+				})
+
+				// Clear the timer
+				this.activeTimers.delete(timerId)
+			} catch (error) {
+				console.error('Error sending auto-response:', error)
+			}
+		}, account.avgResponseTime * 1000)
+
+		this.activeTimers.set(timerId, timer)
+	}
+
+	async sendMessage(recipientId: string, accessToken: string, message: string) {
+		try {
+			const response = await axios.post(
+				`${this.apiUrl}/me/messages`,
+				{
+					recipient: { id: recipientId },
+					message: { text: message }
+				},
+				{
+					params: { access_token: accessToken }
+				}
+			)
+
+			return response.data
+		} catch (error) {
+			console.error('Error sending message:', error)
+			throw error
+		}
 	}
 
 	async getUserMessages(
@@ -211,7 +364,7 @@ export class InstagramService {
 			return response.data.data
 		} catch (error: any) {
 			console.error(
-				`[${new Date().toISOString()}] [Instagram] Ошибка получения сообщений:`,
+				`[${new Date().toISOString()}] [Instagram] Error fetching messages:`,
 				error.response ? error.response.data : error.message
 			)
 			throw new Error('Failed to fetch user messages')

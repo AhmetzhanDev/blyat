@@ -9,14 +9,16 @@ const router = express.Router();
 
 const instagramController = new InstagramController();
 
-// WhatsApp маршруты
+// Webhook routes
 router.get('/webhook', instagramController.handleVerifyWebhook);
-router.post('/webhook', instagramController.handleMessageWebhook); // Для получения сообщений
+router.post('/webhook', instagramController.handleMessageWebhook);
 
-router.get('/url', instagramController.redirectToInstagramAuth); // Ссылка на авторизацию
-router.post('/callback', instagramController.handleAuthCallback); // Для входа в аккаунт
+// Authentication routes
+router.get('/url', instagramController.redirectToInstagramAuth);
+router.post('/callback', instagramController.handleAuthCallback);
 
-
-
+// Account management routes
+router.get('/accounts', authMiddleware, instagramController.getInstagramAccounts);
+router.delete('/accounts/:accountId', authMiddleware, instagramController.deleteInstagramAccount);
 
 export default router;
