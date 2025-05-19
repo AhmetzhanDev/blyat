@@ -183,10 +183,12 @@ export class InstagramController {
 		const challenge = req.query['hub.challenge']
 		const verifyToken = req.query['hub.verify_token']
 
+		console.log('Webhook verify:', { mode, challenge, verifyToken, envToken: process.env.IG_VERIFY_TOKEN });
+
 		if (mode === 'subscribe' && verifyToken === process.env.IG_VERIFY_TOKEN) {
-			res.status(200).send(challenge)
+			res.status(200).send(String(challenge));
 		} else {
-			res.status(403).send('Verification failed')
+			res.status(403).send('Verification failed');
 		}
 	}
 
