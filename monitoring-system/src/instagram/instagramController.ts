@@ -12,7 +12,7 @@ const instagramService = new InstagramService()
 
 export class InstagramController {
 	public redirectToInstagramAuth(req: Request, res: Response) {
-		const instagramAuthUrl = `https://api.instagram.com/oauth/authorize?client_id=${process.env.IG_CLIENT_ID}&redirect_uri=${process.env.IG_REDIRECT_URI}&scope=business_basic,business_manage_messages&response_type=code`
+		const instagramAuthUrl = `https://api.instagram.com/oauth/authorize?client_id=${process.env.IG_CLIENT_ID}&redirect_uri=https://api.salestrack.kz/api/instagram/callback&scope=business_basic,business_manage_messages&response_type=code`
 
 		res.send({ url: instagramAuthUrl })
 		return { url: instagramAuthUrl }
