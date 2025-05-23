@@ -14,9 +14,9 @@ router.get('/webhook', instagramController.handleVerifyWebhook);
 router.post('/webhook', instagramController.handleMessageWebhook);
 
 // Authentication routes
-router.get('/url', instagramController.redirectToInstagramAuth);
-router.get('/callback', instagramController.handleAuthCallback);
-router.post('/callback', instagramController.handleAuthCallback);
+router.get('/url',authMiddleware, instagramController.redirectToInstagramAuth);
+router.get('/callback', authMiddleware, instagramController.handleAuthCallback);
+router.post('/callback', authMiddleware, instagramController.handleAuthCallback);
 
 // Account management routes
 router.get('/accounts', authMiddleware, instagramController.getInstagramAccounts);
