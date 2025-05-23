@@ -5,6 +5,7 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="73482629-542a-4dd0-b8d5-70072ea5d72b" name="Changes" comment="">
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/monitoring-system/src/instagram/instagramController.ts" beforeDir="false" afterPath="$PROJECT_DIR$/monitoring-system/src/instagram/instagramController.ts" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -64,7 +65,7 @@
       <option name="presentableId" value="Default" />
       <updated>1747986252694</updated>
       <workItem from="1747986254128" duration="1000" />
-      <workItem from="1747986257926" duration="1098000" />
+      <workItem from="1747986257926" duration="2055000" />
     </task>
     <servers />
   </component>

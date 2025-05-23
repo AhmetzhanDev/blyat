@@ -12,7 +12,13 @@ const instagramService = new InstagramService()
 
 export class InstagramController {
 	public redirectToInstagramAuth(req: Request, res: Response) {
-		const instagramAuthUrl = `https://api.instagram.com/oauth/authorize?client_id=${process.env.IG_CLIENT_ID}&redirect_uri=https://api.salestrack.kz/api/instagram/callback&scope=business_basic,business_manage_messages&response_type=code`
+		const userId = req.user?.id;
+
+		if (!userId) {
+			return res.status(401).json({ error: 'Unauthorized' });
+		}
+
+		const instagramAuthUrl = `https://api.instagram.com/oauth/authorize?client_id=${process.env.IG_CLIENT_ID}&redirect_uri=https://api.salestrack.kz/api/instagram/callback&scope=business_basic,business_manage_messages&response_type=code&state=${userId}`
 
 		res.send({ url: instagramAuthUrl })
 		return { url: instagramAuthUrl }
@@ -24,8 +30,9 @@ export class InstagramController {
 				`[${new Date().toISOString()}] [Instagram] Processing callback...`
 			)
 
-			const { code, userId } = req.body
-			const redirectUri = process.env.IG_REDIRECT_URI
+			const code = req.method === 'GET' ? req.query.code : req.body.code;
+			const userId = req.method === 'GET' ? req.query.userId : req.body.userId;
+			const redirectUri = process.env.IG_REDIRECT_URI;
 
 			console.log(`[${new Date().toISOString()}] [Instagram] Received data:`, {
 				code,
