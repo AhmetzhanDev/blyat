@@ -12,6 +12,7 @@ const instagramService = new InstagramService()
 
 export class InstagramController {
 	public redirectToInstagramAuth(req: Request, res: Response) {
+		// @ts-ignore
 		const userId = req.user?.id;
 
 		if (!userId) {
