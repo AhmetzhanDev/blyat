@@ -19,13 +19,14 @@ export class InstagramController {
 			return res.status(401).json({ error: 'Unauthorized' });
 		}
 
-		const instagramAuthUrl = `https://api.instagram.com/oauth/authorize?client_id=${process.env.IG_CLIENT_ID}&redirect_uri=https://api.salestrack.kz/api/instagram/callback&scope=business_basic,business_manage_messages&response_type=code&state=${userId}`
+		const inst_url = `https://api.instagram.com/oauth/authorize?client_id=${process.env.IG_CLIENT_ID}&redirect_uri=https://api.salestrack.kz/api/instagram/callback&scope=business_basic,business_manage_messages&response_type=code&state=${userId}`
 
-		res.send({ url: instagramAuthUrl })
-		return { url: instagramAuthUrl }
+		res.send({ url: inst_url })
+		return { url: inst_url }
 	}
 
 	public async handleAuthCallback(req: Request, res: Response) {
+		console.log(`[Instagram] handleAuthCallback triggered with method ${req.method}`);
 		try {
 			console.log(
 				`[${new Date().toISOString()}] [Instagram] Processing callback...`
