@@ -13,7 +13,7 @@ const instagramService = new InstagramService()
 export class InstagramController {
 	public redirectToInstagramAuth(req: Request, res: Response) {
 		// @ts-ignore
-		const userId = req.user?.id;
+		const userId = req.headers['userid'] || req.user?.id;
 
 		if (!userId) {
 			return res.status(401).json({ error: 'Unauthorized' });
