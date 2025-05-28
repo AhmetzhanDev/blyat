@@ -26,7 +26,7 @@ export class InstagramController {
 			)
 
 			const code = req.method === 'GET' ? req.query.code : req.body.code;
-			const userId = req.method === 'GET' ? req.query.userId : req.body.userId;
+			const userId = req.method === 'GET' ? req.query.state : req.body.state;
 			const redirectUri = process.env.IG_REDIRECT_URI;
 
 			console.log(`[${new Date().toISOString()}] [Instagram] Received data:`, {
@@ -170,6 +170,10 @@ export class InstagramController {
 		}
 	}
 
+
+
+
+	
 	public async handleMessageWebhook(req: Request, res: Response) {
 		try {
 			await instagramService.handleMessage(req.body)
