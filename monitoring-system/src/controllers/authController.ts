@@ -3,6 +3,7 @@ import { AuthRequest } from '../middlewares/authMiddleware'
 import { UserModel } from '../models/User'
 import jwt from 'jsonwebtoken'
 import { sendVerificationCode } from '../whatsapp/adminClient'
+import { RegisterRequest } from '../models/RegisterRequests'
 
 // Шаг 1: Отправка номера телефона
 export const sendPhoneNumber = async (
@@ -11,7 +12,7 @@ export const sendPhoneNumber = async (
 ): Promise<void> => {
 	try {
 		const { phoneNumber } = req.body
-
+		await RegisterRequest.create(phoneNumber);
 		if (!phoneNumber) {
 			res.status(400).json({
 				success: false,
