@@ -17,6 +17,8 @@ export const saveCompanySettings = async (req: Request, res: Response) => {
 			idCompany,
 			companyId,
 			phoneNumber,
+			working_hours_start,
+			working_hours_end,
 		} = req.body
 
 		console.log('Попытка создания компании:', {
@@ -25,6 +27,8 @@ export const saveCompanySettings = async (req: Request, res: Response) => {
 			managerResponse,
 			idCompany,
 			phoneNumber,
+			working_hours_start,
+			working_hours_end,
 		})
 
 		if (
@@ -80,6 +84,9 @@ export const saveCompanySettings = async (req: Request, res: Response) => {
 			phoneNumber,
 			managerResponse: responseTime,
 			companyId,
+			working_hours_start,
+			working_hours_end,
+			urlTelegram,
 			createdAt: new Date(),
 		}
 
