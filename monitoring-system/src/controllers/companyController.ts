@@ -86,7 +86,6 @@ export const saveCompanySettings = async (req: Request, res: Response) => {
 			companyId,
 			working_hours_start,
 			working_hours_end,
-			urlTelegram,
 			createdAt: new Date(),
 		}
 
