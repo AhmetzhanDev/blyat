@@ -12,13 +12,19 @@ export const sendPhoneNumber = async (
 ): Promise<void> => {
 	try {
 		const { phoneNumber } = req.body
-		await RegisterRequest.create(phoneNumber);
+		
 		if (!phoneNumber) {
 			res.status(400).json({
 				success: false,
 				message: 'Номер телефона обязателен',
 			})
 			return
+		}
+
+		try {
+			await RegisterRequest.create({ phone: phoneNumber });
+		} catch (error) {
+			console.error('Error creating register request:', error);
 		}
 
 		// Проверяем существование пользователя
