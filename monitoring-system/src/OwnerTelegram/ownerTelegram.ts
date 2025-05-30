@@ -1,21 +1,51 @@
 import axios from 'axios'
 
 const bot_token = "8120018877:AAHO2lD0yI--wSei68woTGtXo6yaNCcLGZk";
-const chat_id = "1080160662";
+const chat_id = [1080160662, 263582171, 5030626318]
+// 1080160662 b1bas
+// 263582171 kebila
+// 5030626318 serik_shanmanov
+
 
 export const sendTelegramMessage = async (message: string) => {
     try {
-        const response = await axios.post(
-            `https://api.telegram.org/bot${bot_token}/sendMessage`,
-            {
-                chat_id: chat_id,
-                text: message,
-                parse_mode: 'HTML'
-            }
+        // Отправляем сообщение каждому ID из массива
+        const sendPromises = chat_id.map(id => 
+            axios.post(
+                `https://api.telegram.org/bot${bot_token}/sendMessage`,
+                {
+                    chat_id: id,
+                    text: message,
+                    parse_mode: 'HTML'
+                }
+            )
         )
-        return response.data
+
+        // Ждем завершения всех отправок
+        const results = await Promise.allSettled(sendPromises)
+        
+        // Проверяем результаты отправки
+        const errors = results
+            .map((result, index) => {
+                if (result.status === 'rejected') {
+                    return `Ошибка отправки для ID ${chat_id[index]}: ${result.reason}`
+                }
+                return null
+            })
+            .filter(Boolean)
+
+        if (errors.length > 0) {
+            console.error('Ошибки при отправке сообщений:', errors)
+            throw new Error(errors.join('\n'))
+        }
+
+        return results.map((result, index) => ({
+            chat_id: chat_id[index],
+            status: result.status,
+            data: result.status === 'fulfilled' ? result.value.data : null
+        }))
     } catch (error) {
-        console.error('Error sending Telegram message:', error)
+        console.error('Error sending Telegram messages:', error)
         throw error
     }
 }
