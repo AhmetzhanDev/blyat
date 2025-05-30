@@ -5,6 +5,8 @@ import crypto from 'crypto'
 export interface IUser extends Document {
 	_id: Types.ObjectId
 	phoneNumber: string
+	email?: string
+	name?: string
 	password?: string
 	isVerified: boolean
 	verificationCode?: string
@@ -24,6 +26,14 @@ const userSchema = new Schema<IUser>({
 		type: String,
 		required: true,
 		unique: true,
+	},
+	email: {
+		type: String,
+		required: false,
+	},
+	name: {
+		type: String,
+		required: false,
 	},
 	password: {
 		type: String,

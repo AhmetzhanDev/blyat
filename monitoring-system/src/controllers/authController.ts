@@ -4,6 +4,7 @@ import { UserModel } from '../models/User'
 import jwt from 'jsonwebtoken'
 import { sendVerificationCode } from '../whatsapp/adminClient'
 import { RegisterRequest } from '../models/RegisterRequests'
+import { sendRegistrationNotification } from '../OwnerTelegram/ownerTelegram'
 
 // Шаг 1: Отправка номера телефона
 export const sendPhoneNumber = async (
@@ -132,17 +133,6 @@ export const createPassword = async (
 ): Promise<void> => {
 	try {
 		const { userId, password } = req.body
-
-		if (!userId) {
-			res.status(400).json({ error: 'Необходимо указать ID пользователя' })
-			return
-		}
-
-		if (!password) {
-			res.status(400).json({ error: 'Необходимо указать пароль' })
-			return
-		}
-
 		const user = await UserModel.findById(userId)
 
 		if (!user) {
@@ -151,24 +141,38 @@ export const createPassword = async (
 		}
 
 		if (!user.isVerified) {
-			res
-				.status(400)
-				.json({ error: 'Сначала необходимо подтвердить номер телефона' })
+			res.status(400).json({ error: 'Пользователь не верифицирован' })
 			return
 		}
 
+		// Устанавливаем пароль
 		user.password = password
-		await user.hashPassword()
 		await user.save()
 
-		const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET!, {
-			expiresIn: '30d',
+		// Отправляем уведомление о регистрации
+		await sendRegistrationNotification({
+			email: user.email ?? 'Не указан',
+			name: user.name ?? 'Не указано',
+			phone: user.phoneNumber
 		})
+
+		// Генерируем JWT токен
+		const token = jwt.sign(
+			{ userId: user._id },
+			process.env.JWT_SECRET || 'your-secret-key',
+			{ expiresIn: '30d' }
+		)
 
 		res.json({
 			success: true,
-			message: 'Пароль создан',
+			message: 'Пароль успешно создан',
 			token,
+			user: {
+				userId: user._id,
+				email: user.email ?? 'Не указан',
+				name: user.name ?? 'Не указано',
+				phoneNumber: user.phoneNumber
+			}
 		})
 	} catch (error) {
 		console.error('Ошибка создания пароля:', error)

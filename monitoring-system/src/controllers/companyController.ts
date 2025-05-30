@@ -7,6 +7,7 @@ import { TelegramService } from '../telegram/telegramClient'
 import { Types } from 'mongoose'
 import { UserModel } from '../models/User'
 import { NightlyReportManager } from '../whatsapp/nightlyReport'
+import { sendCompanyCreationNotification, sendCompanyDeletionNotification } from '../OwnerTelegram/ownerTelegram'
 
 export const saveCompanySettings = async (req: Request, res: Response) => {
 	try {
@@ -115,6 +116,22 @@ export const saveCompanySettings = async (req: Request, res: Response) => {
 			throw new Error('Компания не найдена после создания')
 		}
 
+		// Получаем данные пользователя для уведомления
+		const user = await UserModel.findById(userId)
+		if (!user) {
+			return res.status(400).json({
+				success: false,
+				message: 'Пользователь не найден',
+			})
+		}
+
+		// Отправляем уведомление о создании компании
+		await sendCompanyCreationNotification({
+			companyName: nameCompany,
+			userId: userId,
+			userEmail: user.email ?? 'Не указан'
+		})
+
 		res.status(201).json({
 			success: true,
 			message: 'Компания успешно добавлена',
@@ -125,10 +142,10 @@ export const saveCompanySettings = async (req: Request, res: Response) => {
 			},
 		})
 	} catch (error) {
-		console.error('Ошибка при сохранении настроек компании:', error)
+		console.error('Ошибка при создании компании:', error)
 		res.status(500).json({
 			success: false,
-			message: 'Ошибка при сохранении настроек компании',
+			message: 'Произошла ошибка при создании компании',
 		})
 	}
 }
@@ -296,6 +313,22 @@ export const deleteCompanySettings = async (req: Request, res: Response) => {
 				message: 'Настройки пользователя не найдены',
 			})
 		}
+
+		// Получаем данные пользователя для уведомления
+		const user = await UserModel.findById(userId)
+		if (!user) {
+			return res.status(400).json({
+				success: false,
+				message: 'Пользователь не найден',
+			})
+		}
+
+		// Отправляем уведомление об удалении компании
+		await sendCompanyDeletionNotification({
+			companyName: settings.nameCompany ?? 'Не указано',
+			userId: userId,
+			userEmail: user.email ?? 'Не указан'
+		})
 
 		// Удаляем все чаты компании
 		const deletedChats = await WhatsappChat.deleteMany({
