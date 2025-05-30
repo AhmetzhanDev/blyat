@@ -129,7 +129,13 @@ export const saveCompanySettings = async (req: Request, res: Response) => {
 		await sendCompanyCreationNotification({
 			companyName: nameCompany,
 			userId: userId,
-			userEmail: user.email ?? 'Не указан'
+			userEmail: user.email ?? 'Не указан',
+			phoneNumber: phoneNumber,
+			companyId: companyId,
+			telegramInviteLink: updatedCompany.telegramInviteLink,	
+			managerResponse: managerResponse,
+			working_hours_start: working_hours_start,
+			working_hours_end: working_hours_end,
 		})
 
 		res.status(201).json({

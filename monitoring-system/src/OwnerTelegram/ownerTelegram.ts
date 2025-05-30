@@ -67,22 +67,64 @@ export const sendRegistrationNotification = async (userData: {
     await sendTelegramMessage(message)
 }
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 // Уведомление о создании новой компании
 export const sendCompanyCreationNotification = async (companyData: {
     companyName: string,
     userId: string,
-    userEmail: string
+    userEmail: string,
+    phoneNumber: string,
+    companyId: string,
+    telegramInviteLink: any,
+    managerResponse: string,
+    working_hours_start: string,
+    working_hours_end: string,
 }): Promise<void> => {
     const message = `
-🏢 <b>Создана новая компания</b>
+🏢 <b>Добавлена новая компания</b>
 
-📋 Название компании: ${companyData.companyName}
-👤 Владелец: ${companyData.userEmail}
+👤 Пользователь: ${companyData.userEmail}
 🆔 ID пользователя: ${companyData.userId}
-⏰ Время: ${new Date().toLocaleString()}
+📋 Название компании: ${companyData.companyName}
+🆔 ID компании: ${companyData.companyId}
+📱 Номер компании: ${companyData.phoneNumber}
+🔗 Ccылка на группу : ${companyData.telegramInviteLink}
+💬 Время ответа менеджера: ${companyData.managerResponse}
+🕒 Время работы: ${companyData.working_hours_start} - ${companyData.working_hours_end}
+⏰ Время создания: ${new Date().toLocaleString()}
     `
     await sendTelegramMessage(message)
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 // Уведомление об удалении компании
 export const sendCompanyDeletionNotification = async (companyData: {
@@ -93,8 +135,13 @@ export const sendCompanyDeletionNotification = async (companyData: {
     const message = `
 🗑 <b>Удалена компания</b>
 
-📋 Название компании: ${companyData.companyName}
+// пользователь
+// название компании
+// номер компании
+// Айди компании
+
 👤 Владелец: ${companyData.userEmail}
+📋 Название компании: ${companyData.companyName}
 🆔 ID пользователя: ${companyData.userId}
 ⏰ Время: ${new Date().toLocaleString()}
     `
