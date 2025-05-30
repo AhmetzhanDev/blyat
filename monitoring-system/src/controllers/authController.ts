@@ -24,7 +24,7 @@ export const sendPhoneNumber = async (
 		try {
 			await RegisterRequest.create({ phone: phoneNumber });
 		} catch (error) {
-			console.error('Error creating register request:', error);
+			console.error('Ошибка при создании запроса регистрации:', error);
 		}
 
 		// Проверяем существование пользователя
