@@ -333,7 +333,9 @@ export const deleteCompanySettings = async (req: Request, res: Response) => {
 		await sendCompanyDeletionNotification({
 			companyName: settings.nameCompany ?? 'Не указано',
 			userId: userId,
-			userEmail: user.email ?? 'Не указан'
+			userEmail: user.email ?? 'Не указан',
+			phoneNumber: settings.phoneNumber ?? 'Не указан',
+			companyId: companyId,
 		})
 
 		// Удаляем все чаты компании

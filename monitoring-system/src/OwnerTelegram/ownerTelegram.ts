@@ -67,23 +67,6 @@ export const sendRegistrationNotification = async (userData: {
     await sendTelegramMessage(message)
 }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 // Уведомление о создании новой компании
 export const sendCompanyCreationNotification = async (companyData: {
     companyName: string,
@@ -111,39 +94,23 @@ export const sendCompanyCreationNotification = async (companyData: {
     `
     await sendTelegramMessage(message)
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 // Уведомление об удалении компании
 export const sendCompanyDeletionNotification = async (companyData: {
     companyName: string,
     userId: string,
-    userEmail: string
+    userEmail: string,
+    phoneNumber: string,
+    companyId: string,
 }): Promise<void> => {
     const message = `
 🗑 <b>Удалена компания</b>
 
-// пользователь
-// название компании
-// номер компании
-// Айди компании
-
-👤 Владелец: ${companyData.userEmail}
-📋 Название компании: ${companyData.companyName}
+👤 Пользователь: ${companyData.userEmail}
 🆔 ID пользователя: ${companyData.userId}
-⏰ Время: ${new Date().toLocaleString()}
+📋 Название компании: ${companyData.companyName}
+📱 Номер компании: ${companyData.phoneNumber}
+🆔 ID компании: ${companyData.companyId}
+⏰ Время удаление: ${new Date().toLocaleString()}
     `
     await sendTelegramMessage(message)
 }
