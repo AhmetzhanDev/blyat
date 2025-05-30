@@ -3,18 +3,20 @@ import axios from 'axios'
 const bot_token = "8120018877:AAHO2lD0yI--wSei68woTGtXo6yaNCcLGZk";
 const chat_id = "1080160662";
 
-
-// Функция для отправки сообщения в Telegram
-const sendTelegramMessage = async (message: string): Promise<void> => {
+export const sendTelegramMessage = async (message: string) => {
     try {
-        const url = `https://api.telegram.org/bot${bot_token}/sendMessage`
-        await axios.post(url, {
-            chat_id: chat_id,
-            text: message,
-            parse_mode: 'HTML'
-        })
+        const response = await axios.post(
+            `https://api.telegram.org/bot${bot_token}/sendMessage`,
+            {
+                chat_id: chat_id,
+                text: message,
+                parse_mode: 'HTML'
+            }
+        )
+        return response.data
     } catch (error) {
-        console.error('Ошибка при отправке сообщения в Telegram:', error)
+        console.error('Error sending Telegram message:', error)
+        throw error
     }
 }
 
