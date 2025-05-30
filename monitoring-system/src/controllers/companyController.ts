@@ -129,10 +129,9 @@ export const saveCompanySettings = async (req: Request, res: Response) => {
 		await sendCompanyCreationNotification({
 			companyName: nameCompany,
 			userId: userId,
-			userEmail: user.email ?? 'Не указан',
 			phoneNumber: phoneNumber,
 			companyId: companyId,
-			telegramInviteLink: updatedCompany.telegramInviteLink,	
+			telegramInviteLink: updatedCompany?.telegramInviteLink,	
 			managerResponse: managerResponse,
 			working_hours_start: working_hours_start,
 			working_hours_end: working_hours_end,
@@ -333,7 +332,6 @@ export const deleteCompanySettings = async (req: Request, res: Response) => {
 		await sendCompanyDeletionNotification({
 			companyName: settings.nameCompany ?? 'Не указано',
 			userId: userId,
-			userEmail: user.email ?? 'Не указан',
 			phoneNumber: settings.phoneNumber ?? 'Не указан',
 			companyId: companyId,
 		})
