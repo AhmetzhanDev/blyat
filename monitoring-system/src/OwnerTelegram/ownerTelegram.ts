@@ -1,7 +1,7 @@
 import axios from 'axios'
 
 const bot_token = "8120018877:AAHO2lD0yI--wSei68woTGtXo6yaNCcLGZk";
-const chat_id = [1080160662, 263582171, 5030626318]
+const chat_id = [1080160662, 263582171, 5030626318, 1066106729]
 // 1080160662 b1bas
 // 263582171 kebila
 // 5030626318 serik_shanmanov
