@@ -257,4 +257,31 @@ export class InstagramController {
 			res.status(500).json({ message: 'Error deleting account' })
 		}
 	}
+
+	public async updateInstagramAccount(req: AuthRequest, res: Response) {
+		try {
+			const userId = req.user?.id;
+			const { accountId } = req.params;
+			const updateFields = req.body;
+
+			if (!userId) {
+				return res.status(401).json({ message: 'Unauthorized' });
+			}
+
+			const account = await InstagramAccountModel.findOneAndUpdate(
+				{ _id: accountId, userId },
+				updateFields,
+				{ new: true }
+			);
+
+			if (!account) {
+				return res.status(404).json({ message: 'Account not found' });
+			}
+
+			res.json({ success: true, account });
+		} catch (error) {
+			console.error('Error updating Instagram account:', error);
+			res.status(500).json({ message: 'Error updating account' });
+		}
+	}
 }
