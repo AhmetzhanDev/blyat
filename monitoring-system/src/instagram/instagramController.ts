@@ -84,6 +84,8 @@ export class InstagramController {
 				throw new Error('Company settings not found')
 			}
 
+			console.log(`[${new Date().toISOString()}] [Instagram] Found existing company settings:`, companySettings)
+
 			// Create or update Instagram account
 			const instagramAccount = await InstagramAccountModel.findOneAndUpdate(
 				{ userId },
@@ -101,6 +103,8 @@ export class InstagramController {
 				{ upsert: true, new: true }
 			)
 
+			console.log(`[${new Date().toISOString()}] [Instagram] Created/Updated Instagram account:`, instagramAccount)
+
 			// Update user status
 			console.log(
 				`[${new Date().toISOString()}] [Instagram] Updating user data...`
@@ -116,6 +120,7 @@ export class InstagramController {
 			)
 
 			// Create new company settings for Instagram
+			console.log(`[${new Date().toISOString()}] [Instagram] Creating new company settings for Instagram...`)
 			const newCompanySettings = new CompanySettings({
 				userId,
 				nameCompany: companySettings.nameCompany,
@@ -130,7 +135,16 @@ export class InstagramController {
 				messanger: 'instagram',
 				isRunning: true
 			})
-			await newCompanySettings.save()
+
+			console.log(`[${new Date().toISOString()}] [Instagram] New company settings object created:`, newCompanySettings)
+
+			try {
+				const savedCompany = await newCompanySettings.save()
+				console.log(`[${new Date().toISOString()}] [Instagram] Successfully saved new company settings:`, savedCompany)
+			} catch (saveError) {
+				console.error(`[${new Date().toISOString()}] [Instagram] Error saving new company settings:`, saveError)
+				throw saveError
+			}
 
 			console.log(
 				`[${new Date().toISOString()}] [Instagram] Instagram successfully connected`

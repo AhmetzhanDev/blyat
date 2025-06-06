@@ -241,17 +241,17 @@ httpServer.listen(PORT, async () => {
 		`[${new Date().toISOString()}] 🌐 API доступен по адресу: https://api.salestrack.kz/api`
 	)
 
-	try {
-		await sendTelegramMessage(`
-<b>Сервер запущен</b>
- Время: ${new Date().toLocaleString()}
- Порт: ${PORT}
- API: https://api.salestrack.kz/api
-		`)
-		console.log(`[${new Date().toISOString()}] ✅ Тестовое сообщение отправлено в Telegram`)
-	} catch (error) {
-		console.error(`[${new Date().toISOString()}] ❌ Ошибка отправки тестового сообщения в Telegram:`, error)
-	}
+// 	try {
+// 		await sendTelegramMessage(`
+// <b>Сервер запущен</b>
+//  Время: ${new Date().toLocaleString()}
+//  Порт: ${PORT}
+//  API: https://api.salestrack.kz/api
+// 		`)
+// 		console.log(`[${new Date().toISOString()}] ✅ Тестовое сообщение отправлено в Telegram`)
+// 	} catch (error) {
+// 		console.error(`[${new Date().toISOString()}] ❌ Ошибка отправки тестового сообщения в Telegram:`, error)
+// 	}
 
 	// Проверяем переменные окружения для продакшена
 	console.log(
