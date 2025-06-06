@@ -98,7 +98,7 @@ export class InstagramController {
 					instagramUsername: companySettings.nameCompany,
 					accessToken: result.access_token,
 					instagramUserId: result.user_id,
-					instagramAccountId: result.instagramAccountId,
+					instagramAccountId: result.instagramAccountId || result.user_id,
 				},
 				{ upsert: true, new: true }
 			)
@@ -115,7 +115,7 @@ export class InstagramController {
 					addedInstagram: true,
 					instagramAccessToken: result.access_token,
 					instagramUserId: result.user_id,
-					instagramAccountId: result.instagramAccountId,
+					instagramAccountId: result.instagramAccountId || result.user_id,
 				}
 			)
 

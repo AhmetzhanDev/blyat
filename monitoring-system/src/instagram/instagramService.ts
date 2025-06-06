@@ -159,18 +159,21 @@ export class InstagramService {
 		accessToken: string
 	): Promise<string> {
 		try {
-			const response = await axios.get(`${this.apiUrl}/me/accounts`, {
+			// Сначала получаем ID страницы Facebook
+			const response = await axios.get(`${this.apiUrl}/me`, {
 				params: {
 					access_token: accessToken,
-					fields: 'instagram_business_account',
+					fields: 'id,accounts{access_token,instagram_business_account{id}}'
 				},
 			})
 
-			if (!response.data?.data?.[0]?.instagram_business_account?.id) {
+			console.log(`[${new Date().toISOString()}] [Instagram] Facebook page response:`, response.data)
+
+			if (!response.data?.accounts?.data?.[0]?.instagram_business_account?.id) {
 				throw new Error('No Instagram business account found')
 			}
 
-			return response.data.data[0].instagram_business_account.id
+			return response.data.accounts.data[0].instagram_business_account.id
 		} catch (error: any) {
 			console.error(
 				`[${new Date().toISOString()}] [Instagram] Business account fetch error:`,
