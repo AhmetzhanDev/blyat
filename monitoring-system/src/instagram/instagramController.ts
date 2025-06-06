@@ -39,31 +39,21 @@ export class InstagramController {
 				console.log(
 					`[${new Date().toISOString()}] [Instagram] Error: missing authorization code`
 				)
-				return res.status(400).json({
-					success: false,
-					error: 'Authorization code is missing',
-				})
+				return res.redirect('https://app.salestrack.kz/Dashboard?instagram_error=1&msg=missing_code')
 			}
 
 			if (!userId) {
 				console.log(
 					`[${new Date().toISOString()}] [Instagram] Error: missing user ID`
 				)
-				return res.status(400).json({
-					success: false,
-					error: 'User ID is missing',
-				})
+				return res.redirect('https://app.salestrack.kz/Dashboard?instagram_error=1&msg=missing_userid')
 			}
 
 			if (!redirectUri) {
 				console.log(
 					`[${new Date().toISOString()}] [Instagram] Error: missing redirect URI in environment`
 				)
-				return res.status(500).json({
-					success: false,
-					error: 'Instagram configuration error',
-					details: 'Missing redirect URI configuration',
-				})
+				return res.redirect('https://app.salestrack.kz/Dashboard?instagram_error=1&msg=missing_redirecturi')
 			}
 
 			// Exchange code for token
@@ -85,7 +75,7 @@ export class InstagramController {
 					`[${new Date().toISOString()}] [Instagram] Error: invalid response from Instagram API`,
 					result
 				)
-				throw new Error('Invalid response from Instagram API')
+				return res.redirect('https://app.salestrack.kz/Dashboard?instagram_error=1&msg=invalid_response')
 			}
 
 			// Get user's company settings
@@ -138,35 +128,13 @@ export class InstagramController {
 			console.log(
 				`[${new Date().toISOString()}] [Instagram] Instagram successfully connected`
 			)
-			return res.status(200).json({
-				success: true,
-				message: 'Instagram successfully connected',
-				data: {
-					instagramAccountId: result.instagramAccountId,
-					account: instagramAccount
-				},
-			})
+			return res.redirect('https://app.salestrack.kz/Dashboard?instagram_connected=1')
 		} catch (error: any) {
 			console.error(
 				`[${new Date().toISOString()}] [Instagram] Callback processing error:`,
 				error
 			)
-
-			const errorResponse = {
-				success: false,
-				error: 'Failed to process Instagram callback',
-				details: error?.message || 'Unknown error occurred',
-				type: error?.constructor?.name || 'UnknownError',
-			}
-
-			if (error?.response?.data) {
-				errorResponse.details =
-					typeof error.response.data === 'string'
-						? error.response.data
-						: JSON.stringify(error.response.data)
-			}
-
-			return res.status(500).json(errorResponse)
+			return res.redirect(`https://app.salestrack.kz/Dashboard?instagram_error=1&msg=${encodeURIComponent(error?.message || 'Unknown error')}`)
 		}
 	}
 
