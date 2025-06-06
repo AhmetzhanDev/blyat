@@ -115,15 +115,22 @@ export class InstagramController {
 				}
 			)
 
-			// Update company settings
-			await CompanySettings.updateOne(
-				{ userId },
-				{
-					instagramUserId: result.user_id,
-					accessToken: result.access_token,
-					messanger: 'instagram'
-				}
-			)
+			// Create new company settings for Instagram
+			const newCompanySettings = new CompanySettings({
+				userId,
+				nameCompany: companySettings.nameCompany,
+				managerResponse: companySettings.managerResponse || 5,
+				working_hours_start: companySettings.working_hours_start,
+				working_hours_end: companySettings.working_hours_end,
+				telegramGroupId: companySettings.telegramGroupId,
+				telegramInviteLink: companySettings.telegramInviteLink,
+				phoneNumber: companySettings.phoneNumber,
+				instagramUserId: result.user_id,
+				accessToken: result.access_token,
+				messanger: 'instagram',
+				isRunning: true
+			})
+			await newCompanySettings.save()
 
 			console.log(
 				`[${new Date().toISOString()}] [Instagram] Instagram successfully connected`
