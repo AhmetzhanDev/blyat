@@ -4,6 +4,8 @@ import path from 'path'
 import { io } from '../server'
 import { sendVerificationCode } from '../whatsapp/adminClient'
 import { WhatsAppAccountModel } from './WhatsAppAccount'
+import { MessageMonitor } from '../whatsapp/messageMonitor'
+import { CompanySettings } from '../models/CompanySettings'
 
 const activeClients = new Map<string, Client>()
 
@@ -87,6 +89,21 @@ export const getOrCreateClient = (userId: string): Client => {
 		qrStatus[userId] = 'error'
 		await updateSessionStatus(userId, 'error', 'Ошибка аутентификации: ' + msg)
 		emitQRStatus(userId, 'error', 'Ошибка аутентификации: ' + msg)
+
+		// Отправка уведомления в Telegram-группу
+		try {
+			const companies = await CompanySettings.find({ userId })
+			for (const company of companies) {
+				if (company.telegramGroupId) {
+					await MessageMonitor.getInstance().sendTelegramMessage(
+						company._id,
+						'❗️Ошибка авторизации WhatsApp! Необходимо переподключить сессию через QR-код.'
+					)
+				}
+			}
+		} catch (err) {
+			console.error('Ошибка при отправке уведомления в Telegram:', err)
+		}
 	})
 
 	client.on('disconnected', async (reason: string) => {
@@ -94,6 +111,20 @@ export const getOrCreateClient = (userId: string): Client => {
 		await updateSessionStatus(userId, 'error', 'Клиент отключен: ' + reason)
 		emitQRStatus(userId, 'error', 'Клиент отключен: ' + reason)
 		
+		// Отправка уведомления в Telegram-группу
+		try {
+			const companies = await CompanySettings.find({ userId })
+			for (const company of companies) {
+				if (company.telegramGroupId) {
+					await MessageMonitor.getInstance().sendTelegramMessage(
+						company._id,
+						'❗️Сессия WhatsApp потеряна! Необходимо обновить подключение через QR-код.'
+					)
+				}
+			}
+		} catch (err) {
+			console.error('Ошибка при отправке уведомления в Telegram:', err)
+		}
 		// Удаляем клиент из активных
 		activeClients.delete(userId)
 	})
@@ -162,7 +193,7 @@ export const getQRStatus = async (userId: string) => {
 		return qrStatus[userId] || 'pending'
 	} catch (error) {
 		console.error('Ошибка при получении статуса QR-кода:', error)
-		return qrStatus[userId] || 'pending'
+	return qrStatus[userId] || 'pending'
 	}
 }
 
