@@ -496,6 +496,31 @@ const getWhatsAppStatus = async (req: AuthRequest, res: Response): Promise<void>
 			return
 		}
 
+		// Получаем клиент и проверяем его реальное состояние
+		const client = getOrCreateClient(userId)
+		const state = await client.getState()
+		
+		// Если состояние не CONNECTED, обновляем статус в базе
+		if (state !== 'CONNECTED') {
+			await WhatsAppAccountModel.findOneAndUpdate(
+				{ userId },
+				{ 
+					$set: { 
+						sessionStatus: 'error',
+						lastStatusUpdate: new Date(),
+						statusMessage: 'Сессия не активна'
+					}
+				}
+			)
+			
+			res.json({
+				status: 'error',
+				message: 'Сессия не активна',
+				lastUpdate: new Date(),
+			})
+			return
+		}
+
 		// Проверяем, не устарел ли статус (если прошло больше 5 минут с последнего обновления)
 		const now = new Date()
 		const lastUpdate = account.lastStatusUpdate || new Date(0)
@@ -503,7 +528,6 @@ const getWhatsAppStatus = async (req: AuthRequest, res: Response): Promise<void>
 
 		if (isStatusStale) {
 			// Если статус устарел, обновляем его
-			const client = getOrCreateClient(userId)
 			const status = await getQRStatus(userId)
 			
 			res.json({

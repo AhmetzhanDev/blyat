@@ -125,8 +125,20 @@ export const getOrCreateClient = (userId: string): Client => {
 
 	client.on('disconnected', async (reason: string) => {
 		console.log(`[${new Date().toISOString()}] ⚠️ Клиент отключен для пользователя ${userId}:`, reason)
+		
+		// Удаляем клиент из активных клиентов
+		activeClients.delete(userId)
+		
+		// Обновляем статус в базе данных
 		await updateSessionStatus(userId, 'error', 'Клиент отключен: ' + reason)
 		emitQRStatus(userId, 'error', 'Клиент отключен: ' + reason)
+		
+		// Отправляем событие через сокет
+		io.emit(`whatsapp:disconnected:${userId}`, {
+			success: false,
+			message: 'Клиент отключен: ' + reason,
+			timestamp: new Date().toISOString(),
+		})
 		
 		// Отправка уведомления в Telegram-группу
 		try {
@@ -159,9 +171,6 @@ export const getOrCreateClient = (userId: string): Client => {
 		} catch (err) {
 			console.error(`[${new Date().toISOString()}] ❌ Ошибка при отправке уведомлений в Telegram:`, err)
 		}
-
-		// Удаляем клиент из активных
-		activeClients.delete(userId)
 	})
 
 	activeClients.set(userId, client)
