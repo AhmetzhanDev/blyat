@@ -85,7 +85,7 @@ export const getOrCreateClient = (userId: string): Client => {
 	})
 
 	client.on('auth_failure', async (msg: string) => {
-		console.error(`Ошибка аутентификации для пользователя ${userId}:`, msg)
+		console.error(`[${new Date().toISOString()}] ❌ Ошибка аутентификации для пользователя ${userId}:`, msg)
 		qrStatus[userId] = 'error'
 		await updateSessionStatus(userId, 'error', 'Ошибка аутентификации: ' + msg)
 		emitQRStatus(userId, 'error', 'Ошибка аутентификации: ' + msg)
@@ -93,38 +93,73 @@ export const getOrCreateClient = (userId: string): Client => {
 		// Отправка уведомления в Telegram-группу
 		try {
 			const companies = await CompanySettings.find({ userId })
+			if (!companies || companies.length === 0) {
+				console.error(`[${new Date().toISOString()}] ❌ Не найдены компании для пользователя ${userId}`)
+				return
+			}
+
+			const messageMonitor = MessageMonitor.getInstance()
+			let notificationSent = false
+
 			for (const company of companies) {
 				if (company.telegramGroupId) {
-					await MessageMonitor.getInstance().sendTelegramMessage(
-						company._id,
-						'❗️Ошибка авторизации WhatsApp! Необходимо переподключить сессию через QR-код.'
-					)
+					try {
+						const errorMessage = `❗️ ВНИМАНИЕ! ❗️\n\nОшибка авторизации WhatsApp!\n\nПричина: ${msg}\n\nНеобходимо переподключить сессию через QR-код.\n\n⏰ Время: ${new Date().toLocaleString('ru-RU', { timeZone: 'Asia/Almaty' })}`
+						
+						await messageMonitor.sendTelegramMessage(company._id, errorMessage)
+						notificationSent = true
+						console.log(`[${new Date().toISOString()}] ✅ Уведомление об ошибке отправлено в Telegram для компании ${company.nameCompany}`)
+					} catch (err) {
+						console.error(`[${new Date().toISOString()}] ❌ Ошибка при отправке уведомления в Telegram для компании ${company.nameCompany}:`, err)
+					}
 				}
 			}
+
+			if (!notificationSent) {
+				console.error(`[${new Date().toISOString()}] ❌ Не удалось отправить уведомление ни в одну Telegram-группу`)
+			}
 		} catch (err) {
-			console.error('Ошибка при отправке уведомления в Telegram:', err)
+			console.error(`[${new Date().toISOString()}] ❌ Ошибка при отправке уведомлений в Telegram:`, err)
 		}
 	})
 
 	client.on('disconnected', async (reason: string) => {
-		console.log(`Клиент отключен для пользователя ${userId}:`, reason)
+		console.log(`[${new Date().toISOString()}] ⚠️ Клиент отключен для пользователя ${userId}:`, reason)
 		await updateSessionStatus(userId, 'error', 'Клиент отключен: ' + reason)
 		emitQRStatus(userId, 'error', 'Клиент отключен: ' + reason)
 		
 		// Отправка уведомления в Telegram-группу
 		try {
 			const companies = await CompanySettings.find({ userId })
+			if (!companies || companies.length === 0) {
+				console.error(`[${new Date().toISOString()}] ❌ Не найдены компании для пользователя ${userId}`)
+				return
+			}
+
+			const messageMonitor = MessageMonitor.getInstance()
+			let notificationSent = false
+
 			for (const company of companies) {
 				if (company.telegramGroupId) {
-					await MessageMonitor.getInstance().sendTelegramMessage(
-						company._id,
-						'❗️Сессия WhatsApp потеряна! Необходимо обновить подключение через QR-код.'
-					)
+					try {
+						const disconnectMessage = `❗️ ВНИМАНИЕ! ❗️\n\nСессия WhatsApp потеряна!\n\nПричина: ${reason}\n\nНеобходимо обновить подключение через QR-код.\n\n⏰ Время: ${new Date().toLocaleString('ru-RU', { timeZone: 'Asia/Almaty' })}`
+						
+						await messageMonitor.sendTelegramMessage(company._id, disconnectMessage)
+						notificationSent = true
+						console.log(`[${new Date().toISOString()}] ✅ Уведомление об отключении отправлено в Telegram для компании ${company.nameCompany}`)
+					} catch (err) {
+						console.error(`[${new Date().toISOString()}] ❌ Ошибка при отправке уведомления в Telegram для компании ${company.nameCompany}:`, err)
+					}
 				}
 			}
+
+			if (!notificationSent) {
+				console.error(`[${new Date().toISOString()}] ❌ Не удалось отправить уведомление ни в одну Telegram-группу`)
+			}
 		} catch (err) {
-			console.error('Ошибка при отправке уведомления в Telegram:', err)
+			console.error(`[${new Date().toISOString()}] ❌ Ошибка при отправке уведомлений в Telegram:`, err)
 		}
+
 		// Удаляем клиент из активных
 		activeClients.delete(userId)
 	})
