@@ -8,6 +8,7 @@ import { MessageMonitor } from '../whatsapp/messageMonitor'
 import { CompanySettings } from '../models/CompanySettings'
 
 const activeClients = new Map<string, Client>()
+const sessionCheckIntervals = new Map<string, NodeJS.Timeout>()
 
 // Глобальная переменная для хранения статуса QR-кода
 let qrStatus: { [userId: string]: 'pending' | 'scanned' | 'ready' | 'error' } =
@@ -29,6 +30,65 @@ const updateSessionStatus = async (userId: string, status: string, message?: str
 		)
 	} catch (error) {
 		console.error('Ошибка при обновлении статуса сессии:', error)
+	}
+}
+
+// Функция для проверки состояния сессии
+const checkSessionState = async (userId: string, client: Client) => {
+	try {
+		const state = await client.getState()
+		console.log(`[${new Date().toISOString()}] 🔍 Проверка состояния сессии для пользователя ${userId}:`, state)
+		
+		if (state !== 'CONNECTED') {
+			console.log(`[${new Date().toISOString()}] ⚠️ Сессия неактивна для пользователя ${userId}`)
+			await updateSessionStatus(userId, 'error', 'Сессия неактивна')
+			emitQRStatus(userId, 'error', 'Сессия неактивна')
+			
+			// Отправляем событие через сокет
+			io.emit(`whatsapp:disconnected:${userId}`, {
+				success: false,
+				message: 'Сессия неактивна',
+				timestamp: new Date().toISOString(),
+			})
+			
+			// Отправляем уведомление в Telegram
+			try {
+				const companies = await CompanySettings.find({ userId })
+				if (companies && companies.length > 0) {
+					const messageMonitor = MessageMonitor.getInstance()
+					for (const company of companies) {
+						if (company.telegramGroupId) {
+							const message = `❗️ ВНИМАНИЕ! ❗️\n\nСессия WhatsApp неактивна!\n\nНеобходимо обновить подключение через QR-код.\n\n⏰ Время: ${new Date().toLocaleString('ru-RU', { timeZone: 'Asia/Almaty' })}`
+							await messageMonitor.sendTelegramMessage(company._id, message)
+						}
+					}
+				}
+			} catch (err) {
+				console.error(`[${new Date().toISOString()}] ❌ Ошибка при отправке уведомления в Telegram:`, err)
+			}
+		}
+	} catch (error) {
+		console.error(`[${new Date().toISOString()}] ❌ Ошибка при проверке состояния сессии:`, error)
+	}
+}
+
+// Функция для запуска периодической проверки сессии
+const startSessionCheck = (userId: string, client: Client) => {
+	// Останавливаем предыдущий интервал, если он существует
+	if (sessionCheckIntervals.has(userId)) {
+		clearInterval(sessionCheckIntervals.get(userId))
+	}
+	
+	// Запускаем новую проверку каждые 30 секунд
+	const interval = setInterval(() => checkSessionState(userId, client), 30000)
+	sessionCheckIntervals.set(userId, interval)
+}
+
+// Функция для остановки проверки сессии
+const stopSessionCheck = (userId: string) => {
+	if (sessionCheckIntervals.has(userId)) {
+		clearInterval(sessionCheckIntervals.get(userId))
+		sessionCheckIntervals.delete(userId)
 	}
 }
 
@@ -64,6 +124,9 @@ export const getOrCreateClient = (userId: string): Client => {
 		qrStatus[userId] = 'ready'
 		await updateSessionStatus(userId, 'ready', 'WhatsApp клиент готов к работе')
 		emitQRStatus(userId, 'ready', 'WhatsApp клиент готов к работе')
+		
+		// Запускаем периодическую проверку сессии
+		startSessionCheck(userId, client)
 
 		io.emit(`user:ready:${userId}`, {
 			success: true,
@@ -89,6 +152,9 @@ export const getOrCreateClient = (userId: string): Client => {
 		qrStatus[userId] = 'error'
 		await updateSessionStatus(userId, 'error', 'Ошибка аутентификации: ' + msg)
 		emitQRStatus(userId, 'error', 'Ошибка аутентификации: ' + msg)
+		
+		// Останавливаем проверку сессии
+		stopSessionCheck(userId)
 
 		// Отправка уведомления в Telegram-группу
 		try {
@@ -128,6 +194,9 @@ export const getOrCreateClient = (userId: string): Client => {
 		
 		// Удаляем клиент из активных клиентов
 		activeClients.delete(userId)
+		
+		// Останавливаем проверку сессии
+		stopSessionCheck(userId)
 		
 		// Обновляем статус в базе данных
 		await updateSessionStatus(userId, 'error', 'Клиент отключен: ' + reason)
