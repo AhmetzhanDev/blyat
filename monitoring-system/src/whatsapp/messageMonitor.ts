@@ -36,38 +36,71 @@ export class MessageMonitor {
 	}
 
 	public async sendTelegramMessage(companyId: Types.ObjectId, message: string) {
-		if (!this.telegramService) {
-			throw new Error('Telegram сервис не инициализирован')
+		try {
+			if (!this.telegramService) {
+				console.error('Telegram сервис не инициализирован')
+				throw new Error('Telegram сервис не инициализирован')
+			}
+
+			// Проверяем подключение и инициализируем при необходимости
+			const isConnected = await this.telegramService.isConnected()
+			if (!isConnected) {
+				console.log('Telegram сервис не подключен, пробуем инициализировать...')
+				await this.telegramService.initialize()
+			}
+
+			// Получаем информацию о компании
+			const company = await CompanySettings.findById(companyId)
+			if (!company) {
+				console.error(`Компания ${companyId} не найдена`)
+				throw new Error(`Компания ${companyId} не найдена`)
+			}
+
+			if (!company.telegramGroupId) {
+				console.error(`У компании ${companyId} не указан telegramGroupId`)
+				throw new Error(`У компании ${companyId} не указан telegramGroupId`)
+			}
+
+			// Проверяем формат telegramGroupId
+			let groupId = company.telegramGroupId.toString()
+			if (!groupId.startsWith('-')) {
+				groupId = `-${groupId}`
+			}
+
+			console.log(`Отправка сообщения в группу с ID: ${groupId}`)
+
+			// Добавляем временную метку к сообщению
+			const timestamp = new Date().toLocaleString('ru-RU', { timeZone: 'Asia/Almaty' })
+			const messageWithTimestamp = `${message}\n\n⏰ ${timestamp}`
+
+			// Пробуем отправить сообщение с повторными попытками
+			let retryCount = 0
+			const maxRetries = 3
+			let lastError = null
+
+			while (retryCount < maxRetries) {
+				try {
+					await this.telegramService.sendMessage(groupId, messageWithTimestamp)
+					console.log(`[${new Date().toISOString()}] ✅ Уведомление успешно отправлено в Telegram`)
+					return
+				} catch (error) {
+					lastError = error
+					retryCount++
+					console.error(`Попытка ${retryCount}/${maxRetries} отправки сообщения не удалась:`, error)
+					
+					if (retryCount < maxRetries) {
+						// Ждем перед следующей попыткой (увеличиваем время ожидания с каждой попыткой)
+						await new Promise(resolve => setTimeout(resolve, 1000 * retryCount))
+					}
+				}
+			}
+
+			// Если все попытки не удались, выбрасываем последнюю ошибку
+			throw lastError || new Error('Не удалось отправить сообщение после всех попыток')
+		} catch (error) {
+			console.error('Ошибка при отправке сообщения в Telegram:', error)
+			throw error
 		}
-
-		const isConnected = await this.telegramService.isConnected()
-		if (!isConnected) {
-			await this.telegramService.initialize()
-		}
-
-		const company = await CompanySettings.findById(companyId)
-		if (!company) {
-			console.log(`КОМПАНИЯ ${companyId} НЕ НАЙДЕНА `)
-			return
-		}
-
-		if (!company.telegramGroupId) {
-			console.log(`У компании ${companyId} не указан telegramGroupId`)
-			return
-		}
-
-		// Проверяем формат telegramGroupId
-		let groupId = company.telegramGroupId.toString()
-		if (!groupId.startsWith('-')) {
-			groupId = `-${groupId}`
-		}
-
-		console.log(`Отправка сообщения в группу с ID: ${groupId}`)
-
-		await this.telegramService.sendMessage(groupId, message)
-		console.log(
-			`[${new Date().toISOString()}] ✅ Уведомление отправлено в Telegram`
-		)
 	}
 
 	private isWithinWorkingHours(company: any): boolean {

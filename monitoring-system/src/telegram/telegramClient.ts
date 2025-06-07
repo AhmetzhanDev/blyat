@@ -480,22 +480,11 @@ export class TelegramService {
 	public async sendMessage(groupId: string, message: string): Promise<void> {
 		try {
 			console.log(`[${new Date().toISOString()}] 🔍 Начало отправки сообщения`)
-			console.log(
-				`[${new Date().toISOString()}] 📝 Полученный groupId: ${groupId}`
-			)
-			console.log(
-				`[${new Date().toISOString()}] �� Полученный message: ${message}`
-			)
+			console.log(`[${new Date().toISOString()}] 📝 Полученный groupId: ${groupId}`)
 
 			const botToken = process.env.TELEGRAM_BOT_TOKEN
-			console.log(
-				`[${new Date().toISOString()}] 🔍 Токен бота: ${
-					botToken ? '✅ Найден' : '❌ Отсутствует'
-				}`
-			)
-
 			if (!botToken) {
-				throw new Error('Токен бота не найден')
+				throw new Error('Токен бота не найден в переменных окружения')
 			}
 
 			// Проверяем, что ID группы не пустой
@@ -509,13 +498,11 @@ export class TelegramService {
 				formattedGroupId = `-${formattedGroupId}`
 			}
 
-			console.log(
-				`[${new Date().toISOString()}] 🔍 Отформатированный groupId: ${formattedGroupId}`
-			)
+			console.log(`[${new Date().toISOString()}] 🔍 Отформатированный groupId: ${formattedGroupId}`)
 
-			// Проверяем, что бот добавлен в группу
-			const url = `https://api.telegram.org/bot${botToken}/getChat`
-			const checkResponse = await fetch(url, {
+			// Проверяем подключение бота к группе
+			const checkUrl = `https://api.telegram.org/bot${botToken}/getChat`
+			const checkResponse = await fetch(checkUrl, {
 				method: 'POST',
 				headers: {
 					'Content-Type': 'application/json',
@@ -526,15 +513,8 @@ export class TelegramService {
 			})
 
 			const checkResult = await checkResponse.json()
-			console.log(
-				`[${new Date().toISOString()}] 🔍 Результат проверки группы:`,
-				JSON.stringify(checkResult, null, 2)
-			)
-
 			if (!checkResult.ok) {
-				throw new Error(
-					`Бот не имеет доступа к группе: ${checkResult.description}`
-				)
+				throw new Error(`Бот не имеет доступа к группе: ${checkResult.description}`)
 			}
 
 			// Отправляем сообщение
@@ -543,11 +523,8 @@ export class TelegramService {
 				chat_id: formattedGroupId,
 				text: message,
 				parse_mode: 'HTML',
+				disable_web_page_preview: true, // Отключаем предпросмотр ссылок
 			}
-			console.log(
-				`[${new Date().toISOString()}] 🔍 Тело запроса:`,
-				JSON.stringify(requestBody, null, 2)
-			)
 
 			const response = await fetch(sendUrl, {
 				method: 'POST',
@@ -557,38 +534,16 @@ export class TelegramService {
 				body: JSON.stringify(requestBody),
 			})
 
-			console.log(
-				`[${new Date().toISOString()}] 🔍 Статус ответа: ${response.status}`
-			)
 			const result = await response.json()
-			console.log(
-				`[${new Date().toISOString()}] 📝 Полный ответ от Telegram API:`,
-				JSON.stringify(result, null, 2)
-			)
-
 			if (!result.ok) {
-				console.error(
-					`[${new Date().toISOString()}] ❌ Ошибка отправки в Telegram:`,
-					result.description
-				)
-				throw new Error(
-					`Не удалось отправить сообщение в группу: ${result.description}`
-				)
+				throw new Error(`Ошибка отправки в Telegram: ${result.description}`)
 			}
 
-			console.log(
-				`[${new Date().toISOString()}] ✅ Сообщение успешно отправлено в группу ${formattedGroupId}`
-			)
+			console.log(`[${new Date().toISOString()}] ✅ Сообщение успешно отправлено в группу ${formattedGroupId}`)
 		} catch (error: any) {
-			console.error(
-				`[${new Date().toISOString()}] ❌ Ошибка при отправке сообщения:`,
-				error
-			)
+			console.error(`[${new Date().toISOString()}] ❌ Ошибка при отправке сообщения:`, error)
 			if (error.response) {
-				console.error(
-					`[${new Date().toISOString()}] ❌ Ответ сервера:`,
-					error.response.data
-				)
+				console.error(`[${new Date().toISOString()}] ❌ Ответ сервера:`, error.response.data)
 			}
 			throw error
 		}
