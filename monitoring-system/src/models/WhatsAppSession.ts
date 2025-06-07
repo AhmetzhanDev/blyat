@@ -3,12 +3,32 @@ import qrcode from 'qrcode'
 import path from 'path'
 import { io } from '../server'
 import { sendVerificationCode } from '../whatsapp/adminClient'
+import { WhatsAppAccountModel } from './WhatsAppAccount'
 
 const activeClients = new Map<string, Client>()
 
 // Глобальная переменная для хранения статуса QR-кода
 let qrStatus: { [userId: string]: 'pending' | 'scanned' | 'ready' | 'error' } =
 	{}
+
+// Функция для обновления статуса в базе данных
+const updateSessionStatus = async (userId: string, status: string, message?: string) => {
+	try {
+		await WhatsAppAccountModel.findOneAndUpdate(
+			{ userId },
+			{ 
+				$set: { 
+					sessionStatus: status,
+					lastStatusUpdate: new Date(),
+					statusMessage: message
+				}
+			},
+			{ upsert: true }
+		)
+	} catch (error) {
+		console.error('Ошибка при обновлении статуса сессии:', error)
+	}
+}
 
 // Получение или создание клиента
 export const getOrCreateClient = (userId: string): Client => {
@@ -27,17 +47,20 @@ export const getOrCreateClient = (userId: string): Client => {
 		try {
 			const qrCode = await qrcode.toDataURL(qr)
 			qrStatus[userId] = 'pending'
+			await updateSessionStatus(userId, 'pending', 'QR-код сгенерирован')
 			emitQRStatus(userId, 'pending', 'QR-код сгенерирован')
 
 			io.emit(`user:qr:${userId}`, { qr: qrCode })
 		} catch (err) {
 			console.error('Ошибка при генерации QR-кода:', err)
+			await updateSessionStatus(userId, 'error', 'Ошибка при генерации QR-кода')
 			emitQRStatus(userId, 'error', 'Ошибка при генерации QR-кода')
 		}
 	})
 
-	client.on('ready', () => {
+	client.on('ready', async () => {
 		qrStatus[userId] = 'ready'
+		await updateSessionStatus(userId, 'ready', 'WhatsApp клиент готов к работе')
 		emitQRStatus(userId, 'ready', 'WhatsApp клиент готов к работе')
 
 		io.emit(`user:ready:${userId}`, {
@@ -47,8 +70,9 @@ export const getOrCreateClient = (userId: string): Client => {
 		})
 	})
 
-	client.on('authenticated', () => {
+	client.on('authenticated', async () => {
 		qrStatus[userId] = 'scanned'
+		await updateSessionStatus(userId, 'scanned', 'QR-код успешно отсканирован')
 		emitQRStatus(userId, 'scanned', 'QR-код успешно отсканирован')
 
 		io.emit(`whatsapp:qr_scanned:${userId}`, {
@@ -58,15 +82,20 @@ export const getOrCreateClient = (userId: string): Client => {
 		})
 	})
 
-	client.on('auth_failure', (msg: string) => {
+	client.on('auth_failure', async (msg: string) => {
 		console.error(`Ошибка аутентификации для пользователя ${userId}:`, msg)
 		qrStatus[userId] = 'error'
+		await updateSessionStatus(userId, 'error', 'Ошибка аутентификации: ' + msg)
 		emitQRStatus(userId, 'error', 'Ошибка аутентификации: ' + msg)
 	})
 
-	client.on('disconnected', (reason: string) => {
+	client.on('disconnected', async (reason: string) => {
 		console.log(`Клиент отключен для пользователя ${userId}:`, reason)
+		await updateSessionStatus(userId, 'error', 'Клиент отключен: ' + reason)
 		emitQRStatus(userId, 'error', 'Клиент отключен: ' + reason)
+		
+		// Удаляем клиент из активных
+		activeClients.delete(userId)
 	})
 
 	activeClients.set(userId, client)
@@ -122,8 +151,19 @@ const generateUserQR = async (userId: string): Promise<string> => {
 }
 
 // Функция для получения текущего статуса QR-кода
-export const getQRStatus = (userId: string) => {
-	return qrStatus[userId] || 'pending'
+export const getQRStatus = async (userId: string) => {
+	try {
+		// Сначала проверяем в базе данных
+		const account = await WhatsAppAccountModel.findOne({ userId })
+		if (account?.sessionStatus) {
+			return account.sessionStatus
+		}
+		// Если в базе нет, возвращаем из памяти
+		return qrStatus[userId] || 'pending'
+	} catch (error) {
+		console.error('Ошибка при получении статуса QR-кода:', error)
+		return qrStatus[userId] || 'pending'
+	}
 }
 
 // Экспорт функций

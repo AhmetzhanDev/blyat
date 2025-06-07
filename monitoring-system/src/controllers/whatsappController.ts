@@ -11,6 +11,7 @@ import { UserModel } from '../models/User'
 import { io } from '../server'
 import { Client } from 'whatsapp-web.js'
 import { CompanySettings } from '../models/CompanySettings'
+import { getOrCreateClient, getQRStatus } from '../models/WhatsAppSession'
 
 const dockerService = DockerService.getInstance()
 
@@ -480,6 +481,48 @@ const checkQRStatus = async (
 	}
 }
 
+// Получение статуса WhatsApp
+const getWhatsAppStatus = async (req: AuthRequest, res: Response): Promise<void> => {
+	try {
+		const userId = req.user?.id
+		if (!userId) {
+			res.status(401).json({ error: 'Пользователь не авторизован' })
+			return
+		}
+
+		const account = await WhatsAppAccountModel.findOne({ userId })
+		if (!account) {
+			res.status(404).json({ error: 'Аккаунт WhatsApp не найден' })
+			return
+		}
+
+		// Проверяем, не устарел ли статус (если прошло больше 5 минут с последнего обновления)
+		const now = new Date()
+		const lastUpdate = account.lastStatusUpdate || new Date(0)
+		const isStatusStale = now.getTime() - lastUpdate.getTime() > 5 * 60 * 1000
+
+		if (isStatusStale) {
+			// Если статус устарел, обновляем его
+			const client = getOrCreateClient(userId)
+			const status = await getQRStatus(userId)
+			
+			res.json({
+				status,
+				message: account.statusMessage || 'Статус обновлен',
+				lastUpdate: now,
+			})
+		} else {
+			res.json({
+				status: account.sessionStatus,
+				message: account.statusMessage,
+				lastUpdate: account.lastStatusUpdate,
+			})
+		}
+	} catch (error) {
+		handleError(res, error, 'Ошибка при получении статуса WhatsApp')
+	}
+}
+
 // Экспорт всех функций
 export {
 	sendWhatsAppCode,
@@ -492,4 +535,5 @@ export {
 	handleQRScanned,
 	getQRCodeStatus,
 	checkQRStatus,
+	getWhatsAppStatus,
 }

@@ -11,6 +11,9 @@ export interface IWhatsAppAccount extends Document {
   sessionData: string;
   sessionPath: string;
   createdAt: Date;
+  sessionStatus: 'pending' | 'scanned' | 'ready' | 'error';
+  lastStatusUpdate: Date;
+  statusMessage?: string;
 }
 
 const whatsAppAccountSchema = new Schema<IWhatsAppAccount>({
@@ -68,7 +71,19 @@ const whatsAppAccountSchema = new Schema<IWhatsAppAccount>({
   createdAt: { 
     type: Date, 
     default: Date.now 
-  }
+  },
+  sessionStatus: {
+    type: String,
+    enum: ['pending', 'scanned', 'ready', 'error'],
+    default: 'pending',
+  },
+  lastStatusUpdate: {
+    type: Date,
+    default: Date.now,
+  },
+  statusMessage: {
+    type: String,
+  },
 });
 
 export const WhatsAppAccountModel = mongoose.model<IWhatsAppAccount>('WhatsAppAccount', whatsAppAccountSchema);

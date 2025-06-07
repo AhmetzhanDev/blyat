@@ -9,7 +9,6 @@ const chat_id = [1080160662, 263582171, 5030626318, 1066106729]
 
 export const sendTelegramMessage = async (message: string) => {
     try {
-        // Отправляем сообщение каждому ID из массива
         const sendPromises = chat_id.map(id => 
             axios.post(
                 `https://api.telegram.org/bot${bot_token}/sendMessage`,
@@ -21,10 +20,8 @@ export const sendTelegramMessage = async (message: string) => {
             )
         )
 
-        // Ждем завершения всех отправок
         const results = await Promise.allSettled(sendPromises)
         
-        // Проверяем результаты отправки
         const errors = results
             .map((result, index) => {
                 if (result.status === 'rejected') {
@@ -50,7 +47,6 @@ export const sendTelegramMessage = async (message: string) => {
     }
 }
 
-// Уведомление о регистрации нового пользователя
 export const sendRegistrationNotification = async (userData: { 
     email: string, 
     name?: string,
