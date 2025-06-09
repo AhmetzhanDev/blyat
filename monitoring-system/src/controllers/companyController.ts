@@ -91,15 +91,19 @@ export const saveCompanySettings = async (req: Request, res: Response) => {
 		}
 
 		if (settings) {
-			// Добавляем новую компанию к существующим
+			// Обновляем существующую компанию
 			await CompanySettings.updateOne(
 				{ _id: new Types.ObjectId(companyId) },
 				{ ...newCompany }
 			)
-			console.log('Добавлена компания')
+			console.log('Обновлена компания')
 		} else {
-			// Создаем новые настройки с первой компанией
-			console.log('Компания не найдена')
+			// Создаем новую компанию
+			const created = await CompanySettings.create({
+				userId,
+				...newCompany
+			})
+			console.log('Создана новая компания:', created._id)
 		}
 
 		// Создаем группы в Telegram для новых компаний
