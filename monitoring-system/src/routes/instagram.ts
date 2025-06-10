@@ -22,5 +22,5 @@ router.post('/callback', instagramController.handleAuthCallback);
 router.get('/accounts/:accountId', authMiddleware, instagramController.getInstagramAccounts);
 router.delete('/accounts/:accountId', authMiddleware, instagramController.deleteInstagramAccount);
 router.patch('/accounts/:accountId', authMiddleware, instagramController.updateInstagramAccount);
-
+router.get('/companysettings/account', authMiddleware, instagramController.getInstagramAccountFromCompanySettings);
 export default router;

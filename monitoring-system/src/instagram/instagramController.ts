@@ -201,7 +201,24 @@ export class InstagramController {
 			res.status(500).json({ message: 'Error fetching accounts' })
 		}
 	}
-//test commit
+	public async getInstagramAccountFromCompanySettings(req: AuthRequest, res: Response) {
+		try {
+			const userId = req.user?.id;
+			if (!userId) {
+				return res.status(401).json({ message: 'Unauthorized' });
+			}
+	
+			const companySettings = await CompanySettings.findOne({ userId, messanger: 'instagram' });
+			if (!companySettings) {
+				return res.status(404).json({ message: 'Instagram account not found in company settings' });
+			}
+	
+			res.json(companySettings);
+		} catch (error) {
+			console.error('Error fetching Instagram account from company settings:', error);
+			res.status(500).json({ message: 'Error fetching account' });
+		}
+	}
 	public async deleteInstagramAccount(req: AuthRequest, res: Response) {
 		try {
 			const userId = req.user?.id
