@@ -20,7 +20,7 @@ app.use((req, res, next) => {
 // Настраиваем CORS
 app.use(
 	cors({
-		origin: ['http://localhost:3000', 'https://app.salestrack.kz'],
+		origin: ['https://app.salestrack.kz', 'https://app.salestrack.kz'],
 		credentials: true,
 	})
 )
