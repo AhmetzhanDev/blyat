@@ -165,6 +165,7 @@ export class InstagramController {
 	
 	public async handleMessageWebhook(req: Request, res: Response) {
 		try {
+			console.log('Webhook received:', req.body)
 			await instagramService.handleMessage(req.body)
 			res.status(200).send('Webhook received')
 		} catch (error) {
