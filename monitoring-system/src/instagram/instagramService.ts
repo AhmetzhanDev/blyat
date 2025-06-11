@@ -241,25 +241,22 @@ export class InstagramService {
 						instagramChatId: chat._id
 					})
 
-					// Send to Telegram if configured
-					if (instagramAccount.secondTouch) {
-						const companySettings = await CompanySettings.findOne({
-							id: instagramAccount.companyId
-						})
+					// === [НОВОЕ] Отправка уведомления в Telegram-группу ===
+					const companySettings = await CompanySettings.findOne({
+						id: instagramAccount.companyId
+					})
 
-						if (companySettings?.telegramGroupId) {
-							// Convert to string and ensure it has a minus sign
-							let groupId = companySettings.telegramGroupId.toString()
-							if (!groupId.startsWith('-')) {
-								groupId = `-${groupId}`
-							}
-							
-							await this.telegramService.sendMessage(
-								groupId,
-								`📱 Instagram Message from ${chat.userName || senderId}:\n${message.text}`
-							)
+					if (companySettings?.telegramGroupId) {
+						let groupId = companySettings.telegramGroupId.toString()
+						if (!groupId.startsWith('-')) {
+							groupId = `-${groupId}`
 						}
+						await this.telegramService.sendMessage(
+							groupId,
+							`📱 <b>Новое сообщение в Instagram</b>\n<b>От:</b> ${chat.userName || senderId}\n<b>Текст:</b> ${message.text}`
+						)
 					}
+					// === [КОНЕЦ НОВОГО] ===
 
 					// Send auto-response if configured
 					if (instagramAccount.avgResponseTime > 0) {
