@@ -594,7 +594,7 @@ export const initWhatsappClients = async (io: any) => {
 					company._id
 				}`
 			)
-			const client = getOrCreateClient(company._id.toString())
+			const client = getOrCreateClient((company._id as string).toString())
 
 			// Добавляем обработчики сообщений
 			console.log(

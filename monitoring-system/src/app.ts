@@ -2,6 +2,7 @@ import express from 'express'
 import whatsappRoutes from './routes/whatsappRoutes'
 import authRoutes from './routes/auth'
 import instagramRoutes from './routes/instagram'
+import telegramRoutes from './routes/routes'
 import cors from 'cors'
 
 const app = express()
@@ -20,14 +21,17 @@ app.use((req, res, next) => {
 // Настраиваем CORS
 app.use(
 	cors({
-		origin: ['https://app.salestrack.kz', 'https://app.salestrack.kz'],
+		origin: 'http://localhost:3000',
 		credentials: true,
+		methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+		allowedHeaders: ['Content-Type', 'Authorization']
 	})
 )
 
 app.use('/api/whatsapp', whatsappRoutes)
 app.use('/api/auth', authRoutes)
 app.use('/api/instagram', instagramRoutes)
+app.use('/api/telegram', telegramRoutes)
 
 // Обработка ошибок
 app.use(

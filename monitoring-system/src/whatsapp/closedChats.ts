@@ -5,6 +5,7 @@ import { UserModel } from '../models/User'
 import { CompanySettings } from '../models/CompanySettings'
 import { MessageMonitor } from './messageMonitor'
 import { CronJob } from 'cron/dist'
+import { ObjectId, Types } from 'mongoose'; //
 
 //Получает последние 10 сообщений за последние 24 часа
 export const initCron = (messageMonitor: MessageMonitor) => {
@@ -77,7 +78,7 @@ const sendNotClosedChatsMessage = async (messageMonitor: MessageMonitor) => {
 
 		try {
 			// Отправляем сообщение перед обновлением статуса
-			await messageMonitor.sendTelegramMessage(company._id, message)
+			await messageMonitor.sendTelegramMessage(company._id as Types.ObjectId, message)
 			console.log(
 				`Сообщение о не закрытых чатах отправлено для компании ${
 					company.nameCompany || 'Unknown'

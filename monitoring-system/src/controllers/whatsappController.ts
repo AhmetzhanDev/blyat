@@ -330,11 +330,11 @@ const getUserQR = async (req: AuthRequest, res: Response): Promise<void> => {
 		const { client, qr } = await generateUserQR(
 			userId,
 			io,
-			company._id.toString()
+			(company._id as mongoose.Types.ObjectId).toString()
 		)
 
 		if (client) {
-			clients.push({ client, companyId: company._id.toString() })
+			clients.push({ client, companyId: (company._id as mongoose.Types.ObjectId).toString() })
 		}
 		console.log('[QR-DEBUG] QR-код успешно сгенерирован')
 
@@ -347,7 +347,7 @@ const getUserQR = async (req: AuthRequest, res: Response): Promise<void> => {
 			message: 'Генерация QR-кода начата. Ожидайте получения через WebSocket.',
 			user: {
 				id: user._id,
-				companyId: company._id.toString(),
+				companyId: (company._id as mongoose.Types.ObjectId).toString()
 			},
 		})
 		console.log('[QR-DEBUG] Ответ отправлен клиенту')

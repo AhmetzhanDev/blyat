@@ -1,5 +1,31 @@
 import mongoose from 'mongoose'
 
+// Интерфейс для методов модели
+interface ICompanySettingsMethods {
+	generateVerificationCode(): number;
+}
+
+// Интерфейс для документа
+export interface ICompanySettings extends mongoose.Document {
+	userId: string;
+	id?: string;
+	nameCompany?: string;
+	managerResponse?: number;
+	working_hours_start?: string;
+	working_hours_end?: string;
+	telegramGroupId?: string;
+	telegramInviteLink?: string;
+	phoneNumber?: string;
+	whatsappAuthorized: boolean;
+	createdAt: Date;
+	isRunning: boolean;
+	messanger: string;
+	accessToken?: string;
+	instagramUserId?: string;
+	verificationCode?: number;
+	generateVerificationCode(): number;
+}
+
 // Основная схема настроек с массивом компаний
 const companySettingsSchema = new mongoose.Schema({
 	userId: {
@@ -29,7 +55,7 @@ const companySettingsSchema = new mongoose.Schema({
 		required: false,
 	},
 	telegramGroupId: {
-		type: Number,
+		type: String,
 		required: false,
 	},
 	telegramInviteLink: {
@@ -65,9 +91,21 @@ const companySettingsSchema = new mongoose.Schema({
 		type: String,
 		required: false,
 	},
+	verificationCode: {
+		type: Number,
+		required: false
+	}
 })
 
-export const CompanySettings = mongoose.model(
+// Add method to generate verification code
+companySettingsSchema.methods.generateVerificationCode = function() {
+	// Generate a random 6-digit number
+	const code = Math.floor(100000 + Math.random() * 900000);
+	this.verificationCode = code;
+	return code;
+};
+
+export const CompanySettings = mongoose.model<ICompanySettings, mongoose.Model<ICompanySettings, {}, ICompanySettingsMethods>>(
 	'CompanySettings',
 	companySettingsSchema
 )
