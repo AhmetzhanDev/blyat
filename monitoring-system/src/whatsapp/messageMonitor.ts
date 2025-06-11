@@ -287,13 +287,14 @@ export class MessageMonitor {
 				// Запускаем новый таймер
 				const timer = setTimeout(async () => {
 					const currentTimestamp = new Date().toISOString()
+					const responseTime = company?.managerResponse || 5
 					console.log(
 						`[${currentTimestamp}] ⚠️ Время ответа истекло для ${message.to} (чат ${clientCleanPhoneNumber})`
 					)
 
 					if (company.telegramGroupId) {
 						try {
-							const reminderMessage = `⚠️ ВНИМАНИЕ! ⚠️\n\nВ WhatsApp-чате не ответили на сообщение в течение ${company.managerResponse} минут!\n\nСсылка на чат: https://wa.me/${clientCleanPhoneNumber}`
+							const reminderMessage = `⚠️ ВНИМАНИЕ! ⚠️\n\nВ WhatsApp-чате не ответили на сообщение в течение ${responseTime} минут!\n\nСсылка на чат: https://wa.me/${clientCleanPhoneNumber}`
 
 							if (!this.telegramService) {
 								throw new Error('Telegram сервис не инициализирован')
@@ -321,8 +322,9 @@ export class MessageMonitor {
 				}, (company?.managerResponse || 5) * 60 * 1000)
 
 				this.activeTimers.set(message.from, timer)
+				const responseTime = company?.managerResponse || 5 
 				console.log(
-					`[${timestamp}] ⏳ Запущен таймер на ${company.managerResponse} минут для ${message.to} (чат ${message.from})`
+					`[${timestamp}] ⏳ Запущен таймер на ${responseTime} минут для ${message.to} (чат ${message.from})`
 				)
 			} else {
 				console.log(

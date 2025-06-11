@@ -274,7 +274,7 @@ export class InstagramController {
 				return res.status(401).json({ message: 'Unauthorized' });
 			}
 
-			const account = await InstagramAccountModel.findOneAndUpdate(
+			const account = await CompanySettings.findOneAndUpdate(
 				{ _id: accountId, userId },
 				updateFields,
 				{ new: true }
