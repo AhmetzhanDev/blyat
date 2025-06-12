@@ -242,19 +242,19 @@ export class InstagramService {
 					})
 
 					// === [НОВОЕ] Отправка уведомления в Telegram-группу ===
-					const companySettings = await CompanySettings.findOne({
-						id: instagramAccount.companyId
-					})
+						const companySettings = await CompanySettings.findOne({
+							id: instagramAccount.companyId
+						})
 
-					if (companySettings?.telegramGroupId) {
-						let groupId = companySettings.telegramGroupId.toString()
-						if (!groupId.startsWith('-')) {
-							groupId = `-${groupId}`
-						}
-						await this.telegramService.sendMessage(
-							groupId,
+						if (companySettings?.telegramGroupId) {
+							let groupId = companySettings.telegramGroupId.toString()
+							if (!groupId.startsWith('-')) {
+								groupId = `-${groupId}`
+							}
+							await this.telegramService.sendMessage(
+								groupId,
 							`📱 <b>Новое сообщение в Instagram</b>\n<b>От:</b> ${chat.userName || senderId}\n<b>Текст:</b> ${message.text}`
-						)
+							)
 					}
 					// === [КОНЕЦ НОВОГО] ===
 
