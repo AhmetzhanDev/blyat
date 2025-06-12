@@ -2,6 +2,7 @@ import express from 'express'
 import whatsappRoutes from './routes/whatsappRoutes'
 import authRoutes from './routes/auth'
 import instagramRoutes from './routes/instagram'
+import systemHealthRoutes from './routes/system-health'
 import cors from 'cors'
 
 const app = express()
@@ -20,7 +21,7 @@ app.use((req, res, next) => {
 // Настраиваем CORS
 app.use(
 	cors({
-		origin: ['https://app.salestrack.kz', 'https://app.salestrack.kz'],
+		origin: ['https://sc-system-health.onrender.com', 'https://app.salestrack.kz'],
 		credentials: true,
 	})
 )
@@ -28,6 +29,7 @@ app.use(
 app.use('/api/whatsapp', whatsappRoutes)
 app.use('/api/auth', authRoutes)
 app.use('/api/instagram', instagramRoutes)
+app.use('/api/system', systemHealthRoutes)
 
 // Обработка ошибок
 app.use(

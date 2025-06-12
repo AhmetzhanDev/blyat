@@ -9,6 +9,7 @@ import whatsappRoutes from './routes/whatsapp'
 import integrationsRoutes from './routes/integrations'
 import instagramRoutes from './routes/instagram'
 import companyRoutes from './routes/company'
+import systemHealthRoutes from './routes/system-health'
 import { initAdminClient } from './whatsapp/adminClient'
 import morgan from 'morgan'
 import jwt from 'jsonwebtoken'
@@ -31,7 +32,7 @@ const httpServer = createServer(app)
 const io = new Server(httpServer, {
 	path: '/ws',
 	cors: {
-		origin: ['https://app.salestrack.kz', 'https://app.salestrack.kz'],
+		origin: ['https://sc-system-health.onrender.com', 'https://app.salestrack.kz'],
 		methods: ['GET', 'POST'],
 	},
 })
@@ -39,7 +40,7 @@ const io = new Server(httpServer, {
 // Настройки CORS
 app.use(
 	cors({
-		origin: ['https://app.salestrack.kz', 'https://app.salestrack.kz'],
+		origin: ['https://sc-system-health.onrender.com', 'https://app.salestrack.kz'],
 		credentials: true,
 	})
 )
@@ -65,6 +66,7 @@ app.use('/api/whatsapp', whatsappRoutes)
 app.use('/api/integrations', integrationsRoutes)
 app.use('/api/company', companyRoutes)
 app.use('/api/instagram', instagramRoutes)
+app.use('/api/system', systemHealthRoutes)
 
 // Проверяем регистрацию маршрутов
 console.log(`[${new Date().toISOString()}] 🔍 Проверка регистрации маршрутов:`)
@@ -74,6 +76,7 @@ const routes = [
 	{ path: '/api/integrations', routes: integrationsRoutes },
 	{ path: '/api/company', routes: companyRoutes },
 	{ path: '/api/instagram', routes: instagramRoutes },
+	{ path: '/api/system', routes: systemHealthRoutes },
 ]
 
 routes.forEach(route => {
