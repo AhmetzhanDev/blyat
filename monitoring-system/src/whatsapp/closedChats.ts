@@ -67,31 +67,75 @@ const sendNotClosedChatsMessage = async (messageMonitor: MessageMonitor) => {
 			continue
 		}
 
-		let message = `Список чатов с не закрытыми сделками:\n\n`
-
+		const header = `📊 <b>Список чатов с не закрытыми сделками:</b>\n\n`
+		let currentMessage = header
+		let messageNumber = 1
+		const totalMessages = Math.ceil(uniqueChats.length / 30) // Примерно 30 чатов на сообщение
+		
 		let i = 1
 		for (const chat of uniqueChats) {
-			message += `${i}) https://wa.me/${chat.chatId}\n`
+			const chatEntry = `${i}) https://wa.me/${chat.chatId}\n`
+			
+			if (currentMessage.length + chatEntry.length > 4000) {
+				try {
+					await messageMonitor.sendTelegramMessage(
+						company._id,
+						`${header}[${messageNumber}/${totalMessages}]\n\n${currentMessage.slice(header.length)}`
+					)
+					console.log(
+						`Отправлена часть ${messageNumber}/${totalMessages} для компании ${
+							company.nameCompany || 'Unknown'
+						}`
+					)
+					
+					currentMessage = header
+					messageNumber++
+				} catch (error) {
+					console.error(
+						`Ошибка при отправке части сообщения для компании ${
+							company.nameCompany || 'Unknown'
+						}:`,
+						error
+					)
+				}
+			}
+			
+			currentMessage += chatEntry
 			i++
 		}
 
-		try {
-			// Отправляем сообщение перед обновлением статуса
-			await messageMonitor.sendTelegramMessage(company._id, message)
-			console.log(
-				`Сообщение о не закрытых чатах отправлено для компании ${
-					company.nameCompany || 'Unknown'
-				}`
-			)
+		if (currentMessage.length > header.length) {
+			try {
+				await messageMonitor.sendTelegramMessage(
+					company._id,
+					`${header}[${messageNumber}/${totalMessages}]\n\n${currentMessage.slice(header.length)}`
+				)
+				console.log(
+					`Отправлена последняя часть ${messageNumber}/${totalMessages} для компании ${
+						company.nameCompany || 'Unknown'
+					}`
+				)
+			} catch (error) {
+				console.error(
+					`Ошибка при отправке последней части сообщения для компании ${
+						company.nameCompany || 'Unknown'
+					}:`,
+					error
+				)
+			}
+		}
 
-			// Обновляем статус после успешной отправки
+		try {
 			await WhatsappChat.updateMany(
 				{ isClosed: false, sendMessage: true, companyId: company._id },
 				{ sendMessage: false }
 			)
+			console.log(
+				`Статус чатов обновлен для компании ${company.nameCompany || 'Unknown'}`
+			)
 		} catch (error) {
 			console.error(
-				`Ошибка при отправке сообщения для компании ${
+				`Ошибка при обновлении статуса чатов для компании ${
 					company.nameCompany || 'Unknown'
 				}:`,
 				error
