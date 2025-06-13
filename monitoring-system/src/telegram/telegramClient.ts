@@ -477,74 +477,59 @@ export class TelegramService {
 		}
 	}
 
+	private splitMessage(message: string): string[] {
+		const MAX_LENGTH = 4000;
+		const messages: string[] = [];
+		
+		if (message.length <= MAX_LENGTH) {
+			return [message];
+		}
+
+		let currentIndex = 0;
+		while (currentIndex < message.length) {
+			let endIndex = Math.min(currentIndex + MAX_LENGTH, message.length);
+			if (endIndex < message.length) {
+				const lastSpace = message.lastIndexOf(' ', endIndex);
+				if (lastSpace > currentIndex) {
+					endIndex = lastSpace;
+				}
+			}
+			
+			messages.push(message.slice(currentIndex, endIndex));
+			currentIndex = endIndex + 1;
+		}
+
+		return messages;
+	}
+
 	public async sendMessage(groupId: string, message: string): Promise<void> {
+		if (!this.client) {
+			throw new Error('Telegram клиент не инициализирован')
+		}
+
 		try {
-			console.log(`[${new Date().toISOString()}] 🔍 Начало отправки сообщения`)
-			console.log(`[${new Date().toISOString()}] 📝 Полученный groupId: ${groupId}`)
-
-			const botToken = process.env.TELEGRAM_BOT_TOKEN
-			if (!botToken) {
-				throw new Error('Токен бота не найден в переменных окружения')
+			const messages = this.splitMessage(message);
+			
+			for (let i = 0; i < messages.length; i++) {
+				const part = messages[i];
+				const partNumber = messages.length > 1 ? `[${i + 1}/${messages.length}]\n` : '';
+				
+				await this.client.invoke(
+					new Api.messages.SendMessage({
+						peer: groupId,
+						message: partNumber + part,
+					})
+				);
+				
+				if (i < messages.length - 1) {
+					await new Promise(resolve => setTimeout(resolve, 1000));
+				}
 			}
-
-			// Проверяем, что ID группы не пустой
-			if (!groupId) {
-				throw new Error('ID группы не может быть пустым')
-			}
-
-			// Проверяем формат groupId и добавляем минус, если его нет
-			let formattedGroupId = groupId
-			if (!formattedGroupId.startsWith('-')) {
-				formattedGroupId = `-${formattedGroupId}`
-			}
-
-			console.log(`[${new Date().toISOString()}] 🔍 Отформатированный groupId: ${formattedGroupId}`)
-
-			// Проверяем подключение бота к группе
-			const checkUrl = `https://api.telegram.org/bot${botToken}/getChat`
-			const checkResponse = await fetch(checkUrl, {
-				method: 'POST',
-				headers: {
-					'Content-Type': 'application/json',
-				},
-				body: JSON.stringify({
-					chat_id: formattedGroupId,
-				}),
-			})
-
-			const checkResult = await checkResponse.json()
-			if (!checkResult.ok) {
-				throw new Error(`Бот не имеет доступа к группе: ${checkResult.description}`)
-			}
-
-			// Отправляем сообщение
-			const sendUrl = `https://api.telegram.org/bot${botToken}/sendMessage`
-			const requestBody = {
-				chat_id: formattedGroupId,
-				text: message,
-				parse_mode: 'HTML',
-				disable_web_page_preview: true, // Отключаем предпросмотр ссылок
-			}
-
-			const response = await fetch(sendUrl, {
-				method: 'POST',
-				headers: {
-					'Content-Type': 'application/json',
-				},
-				body: JSON.stringify(requestBody),
-			})
-
-			const result = await response.json()
-			if (!result.ok) {
-				throw new Error(`Ошибка отправки в Telegram: ${result.description}`)
-			}
-
-			console.log(`[${new Date().toISOString()}] ✅ Сообщение успешно отправлено в группу ${formattedGroupId}`)
-		} catch (error: any) {
-			console.error(`[${new Date().toISOString()}] ❌ Ошибка при отправке сообщения:`, error)
-			if (error.response) {
-				console.error(`[${new Date().toISOString()}] ❌ Ответ сервера:`, error.response.data)
-			}
+		} catch (error) {
+			console.error(
+				`[${new Date().toISOString()}] ❌ Ошибка при отправке сообщения в Telegram:`,
+				error
+			)
 			throw error
 		}
 	}

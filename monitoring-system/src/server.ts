@@ -21,7 +21,6 @@ import { initDailyReportCron } from './whatsapp/dailyReport'
 import { MessageMonitor } from './whatsapp/messageMonitor'
 import path from 'path'
 import fs from 'fs'
-import { initNightlyReportCron } from './whatsapp/nightlyReport'
 import { sendTelegramMessage } from './OwnerTelegram/ownerTelegram'
 
 // Загружаем переменные окружения
@@ -359,15 +358,6 @@ httpServer.listen(PORT, async () => {
 		initDailyReportCron(messageMonitor)
 		console.log(
 			`[${new Date().toISOString()}] ✅ Крон для ежедневного отчета инициализирован`
-		)
-
-		// Инициализируем крон для ночного отчета
-		console.log(
-			`[${new Date().toISOString()}] 🔄 Инициализация крон для ночного отчета...`
-		)
-		initNightlyReportCron(messageMonitor)
-		console.log(
-			`[${new Date().toISOString()}] ✅ Крон для ночного отчета инициализирован`
 		)
 	} catch (error) {
 		console.error(

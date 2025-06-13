@@ -13,8 +13,8 @@ export const initDailyReportCron = (messageMonitor: MessageMonitor) => {
 
 	// Тестовый режим - запуск каждую минуту
 	const testCron = '*/1 * * * *'
-	// Реальный режим - запуск в 21:00 каждый день
-	const realCron = '0 3 * * *'
+	// Реальный режим
+	const realCron = '0 16 * * *'
 
 	// Используем реальный режим
 	const job = new CronJob(realCron, async () => {
@@ -84,7 +84,7 @@ export const initDailyReportCron = (messageMonitor: MessageMonitor) => {
 		`[${new Date().toISOString()}] ✅ Крон для ежедневного отчета запущен`
 	)
 	console.log(
-		`[${new Date().toISOString()}] ⏰ Следующий запуск в 21:00 каждый день`
+		`[${new Date().toISOString()}] ⏰ Следующий запуск в 22:00 каждый день`
 	)
 
 	// Проверяем, что крон действительно запущен
