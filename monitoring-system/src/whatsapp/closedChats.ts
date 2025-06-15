@@ -67,7 +67,7 @@ const sendNotClosedChatsMessage = async (messageMonitor: MessageMonitor) => {
 			continue
 		}
 
-		const header = `📊 <b>Список чатов с не закрытыми сделками:</b>\n\n`
+		const header = `📊 Список чатов с не закрытыми сделками:\n\n`
 		let currentMessage = header
 		let messageNumber = 1
 		const totalMessages = Math.ceil(uniqueChats.length / 30) // Примерно 30 чатов на сообщение
