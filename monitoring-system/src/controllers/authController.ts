@@ -147,6 +147,7 @@ export const createPassword = async (
 
 		// Устанавливаем пароль
 		user.password = password
+		await user.hashPassword()
 		await user.save()
 
 		// Отправляем уведомление о регистрации
