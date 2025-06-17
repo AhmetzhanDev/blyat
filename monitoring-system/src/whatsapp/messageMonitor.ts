@@ -339,52 +339,6 @@ export class MessageMonitor {
 		}
 	}
 
-	public async handleAdminMessage(message: Message): Promise<void> {
-		try {
-			const timestamp = new Date().toISOString()
-			console.log(`[${timestamp}] 📱 Получено сообщение от: ${message.from}`)
-			console.log(`[${timestamp}] 📝 Текст сообщения: "${message.body}"`)
-
-			// Проверяем, является ли это исходящим сообщением
-			if (message.fromMe) {
-				console.log(`[${timestamp}] 👤 Получено исходящее сообщение`)
-				return
-			}
-
-			// Проверяем, является ли это кодом подтверждения Telegram
-			const isTelegramCode = message.body.match(/^\d{5}$/)
-			if (isTelegramCode) {
-				console.log(
-					`[${timestamp}] 🔑 Обнаружен код подтверждения Telegram: ${message.body}`
-				)
-				console.log(`[${timestamp}] 🔑 Проверяем, ожидает ли Telegram код...`)
-
-				// Проверяем состояние Telegram сервиса
-				const isConnected = await this.telegramService.isConnected()
-				console.log(
-					`[${timestamp}] 🔑 Telegram сервис подключен: ${isConnected}`
-				)
-
-				if (!isConnected) {
-					console.log(
-						`[${timestamp}] 🔑 Пробуем инициализировать Telegram сервис...`
-					)
-					await this.telegramService.initialize()
-				}
-
-				console.log(`[${timestamp}] 🔑 Передаем код в Telegram сервис...`)
-				this.telegramService.setVerificationCode(message.body)
-				console.log(`[${timestamp}] 🔑 Код передан в Telegram сервис`)
-				return
-			}
-		} catch (error) {
-			console.error(
-				`[${new Date().toISOString()}] ❌ Ошибка при обработке сообщения:`,
-				error
-			)
-		}
-	}
-
 	public async handleOutgoingMessage(message: Message): Promise<void> {
 		try {
 			const timestamp = new Date().toISOString()

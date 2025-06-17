@@ -3,7 +3,6 @@ import path from 'path'
 import fs from 'fs'
 import os from 'os'
 import { io } from '../server'
-import { sendVerificationCode } from './adminClient'
 import qrcode from 'qrcode'
 import { Socket } from 'socket.io'
 import { UserModel } from '../models/User'
@@ -12,6 +11,7 @@ import { CompanySettings } from '../models/CompanySettings'
 import { Types } from 'mongoose'
 import { initCron } from './closedChats'
 import { initDailyReportCron } from './dailyReport'
+import { WhatsAppAccountModel } from '../models/WhatsAppAccount'
 
 // Глобальная переменная для хранения таймеров QR-кодов
 const qrTimers = new Map<string, NodeJS.Timeout>()
@@ -222,7 +222,7 @@ export const getOrCreateClient = (companyId: string): Client => {
 }
 
 // Экспорт функций
-export { sendVerificationCode }
+// export { sendVerificationCode } // УДАЛЕНО: админская сессия отключена
 
 // Функция для отправки статуса через WebSocket
 const emitQRStatus = (
@@ -791,105 +791,4 @@ export const initWhatsAppClient = (io: any) => {
 			)
 		})
 	})
-}
-
-// Функция для инициализации админского клиента
-export const initAdminClient = async (): Promise<Client> => {
-	console.log(
-		`[${new Date().toISOString()}] 🔄 Инициализация админского клиента...`
-	)
-
-	// Проверяем наличие сессии админа
-	const adminSessionPath = path.join(sessionsDir, 'session-admin')
-	const hasAdminSession = fs.existsSync(adminSessionPath)
-	console.log(
-		`[${new Date().toISOString()}] 🔍 Проверка сессии админа:`,
-		hasAdminSession ? 'найдена' : 'не найдена'
-	)
-
-	// Если сессия не найдена, создаем новую
-	if (!hasAdminSession) {
-		console.log(
-			`[${new Date().toISOString()}] ⚠️ Сессия админа не найдена, создаем новую`
-		)
-	}
-
-	const client = new Client({
-		authStrategy: new LocalAuth({
-			clientId: 'session-admin',
-			dataPath: sessionsDir,
-		}),
-		puppeteer: {
-			args: [
-				'--no-sandbox',
-				'--disable-setuid-sandbox',
-				'--disable-dev-shm-usage',
-				'--disable-accelerated-2d-canvas',
-				'--no-first-run',
-				'--no-zygote',
-				'--disable-gpu',
-				'--disable-extensions',
-				'--disable-software-rasterizer',
-				'--disable-features=site-per-process',
-				'--disable-features=IsolateOrigins',
-				'--disable-site-isolation-trials',
-			],
-		},
-	})
-
-	// Добавляем обработчики сообщений для админа
-	client.on('message', async message => {
-		console.log(
-			`[${new Date().toISOString()}] 📥 Входящее сообщение для админа:`,
-			{
-				from: message.from,
-				to: message.to,
-				body: message.body,
-				fromMe: message.fromMe,
-				type: message.type,
-			}
-		)
-		try {
-			await messageMonitor.handleAdminMessage(message)
-		} catch (error) {
-			console.error(
-				`[${new Date().toISOString()}] ❌ Ошибка при обработке сообщения админа:`,
-				error
-			)
-		}
-	})
-
-	// Добавляем обработчик аутентификации
-	client.on('authenticated', () => {
-		console.log(
-			`[${new Date().toISOString()}] ✅ Админский клиент успешно аутентифицирован`
-		)
-		console.log(
-			`[${new Date().toISOString()}] 📁 Путь к сессии:`,
-			adminSessionPath
-		)
-	})
-
-	// Добавляем обработчик готовности
-	client.on('ready', () => {
-		console.log(
-			`[${new Date().toISOString()}] ✅ Админский клиент готов к использованию`
-		)
-		console.log(`[${new Date().toISOString()}] 📱 Информация о клиенте:`, {
-			wid: client.info?.wid,
-			platform: client.info?.platform,
-			pushname: client.info?.pushname,
-		})
-	})
-
-	// Инициализируем клиент
-	console.log(
-		`[${new Date().toISOString()}] 🔄 Начало инициализации админского клиента`
-	)
-	await client.initialize()
-	console.log(
-		`[${new Date().toISOString()}] ✅ Админский клиент успешно инициализирован`
-	)
-
-	return client
 }

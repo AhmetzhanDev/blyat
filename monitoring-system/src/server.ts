@@ -10,7 +10,6 @@ import integrationsRoutes from './routes/integrations'
 import instagramRoutes from './routes/instagram'
 import companyRoutes from './routes/company'
 import systemHealthRoutes from './routes/system-health'
-import { initAdminClient } from './whatsapp/adminClient'
 import morgan from 'morgan'
 import jwt from 'jsonwebtoken'
 import { TelegramService } from './telegram/telegramClient'
@@ -288,15 +287,6 @@ httpServer.listen(PORT, async () => {
 		}
 		console.log(
 			`[${new Date().toISOString()}] ✅ TelegramService успешно инициализирован`
-		)
-
-		// Инициализируем админский клиент WhatsApp
-		console.log(
-			`[${new Date().toISOString()}] 🔄 Инициализация админского клиента WhatsApp...`
-		)
-		await initAdminClient()
-		console.log(
-			`[${new Date().toISOString()}] ✅ Админский клиент WhatsApp инициализирован`
 		)
 
 		// Ждем подключения к MongoDB

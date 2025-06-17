@@ -1,8 +1,11 @@
-import { Response } from 'express'
-import { AuthRequest } from '../middlewares/authMiddleware'
-import { UserModel } from '../models/User'
+import { Request, Response } from 'express'
+import bcrypt from 'bcryptjs'
 import jwt from 'jsonwebtoken'
-import { sendVerificationCode } from '../whatsapp/adminClient'
+// import { sendVerificationCode } from '../whatsapp/adminClient' // УДАЛЕНО: админская сессия отключена
+import { UserModel } from '../models/User'
+import { CompanySettings } from '../models/CompanySettings'
+import { TelegramService } from '../telegram/telegramClient'
+import { AuthRequest } from '../middlewares/authMiddleware'
 import { RegisterRequest } from '../models/RegisterRequests'
 import { sendRegistrationNotification } from '../OwnerTelegram/ownerTelegram'
 
