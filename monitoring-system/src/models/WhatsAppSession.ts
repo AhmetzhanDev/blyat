@@ -2,7 +2,7 @@ import { Client, LocalAuth } from 'whatsapp-web.js'
 import qrcode from 'qrcode'
 import path from 'path'
 import { io } from '../server'
-import { sendVerificationCode } from '../whatsapp/adminClient'
+// import { sendVerificationCode } from '../whatsapp/adminClient'
 import { WhatsAppAccountModel } from './WhatsAppAccount'
 import { MessageMonitor } from '../whatsapp/messageMonitor'
 import { CompanySettings } from '../models/CompanySettings'
@@ -311,4 +311,4 @@ export const getQRStatus = async (userId: string) => {
 }
 
 // Экспорт функций
-export { generateUserQR, sendVerificationCode }
+export { generateUserQR }

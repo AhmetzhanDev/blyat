@@ -56,18 +56,18 @@ export const sendPhoneNumber = async (
 		await user.save()
 
 		// Отправляем код через WhatsApp
-		const whatsappSent = await sendVerificationCode(
-			phoneNumber,
-			user.verificationCode
-		)
+		// const whatsappSent = await sendVerificationCode(
+		// 	phoneNumber,
+		// 	user.verificationCode
+		// )
 
-		if (!whatsappSent) {
-			res.status(500).json({
-				success: false,
-				message: 'Ошибка при отправке кода через WhatsApp',
-			})
-			return
-		}
+		// if (!whatsappSent) {
+		// 	res.status(500).json({
+		// 		success: false,
+		// 		message: 'Ошибка при отправке кода через WhatsApp',
+		// 	})
+		// 	return
+		// }
 
 		res.status(200).json({
 			success: true,
@@ -364,19 +364,19 @@ export const requestPasswordReset = async (
 		const userAfterSave = await UserModel.findOne({ phoneNumber })
 		console.log('Код в базе после сохранения:', userAfterSave?.verificationCode)
 
-		// Отправляем код через WhatsApp
-		const whatsappSent = await sendVerificationCode(
-			phoneNumber,
-			verificationCode
-		)
+		// // Отправляем код через WhatsApp
+		// const whatsappSent = await sendVerificationCode(
+		// 	phoneNumber,
+		// 	verificationCode
+		// )
 
-		if (!whatsappSent) {
-			res.status(500).json({
-				success: false,
-				message: 'Ошибка при отправке кода через WhatsApp',
-			})
-			return
-		}
+		// if (!whatsappSent) {
+		// 	res.status(500).json({
+		// 		success: false,
+		// 		message: 'Ошибка при отправке кода через WhatsApp',
+		// 	})
+		// 	return
+		// }
 
 		// Проверяем код в базе после отправки
 		const userAfterWhatsApp = await UserModel.findOne({ phoneNumber })

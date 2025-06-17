@@ -2,7 +2,7 @@ import { Response } from 'express'
 import { AuthRequest } from '../middlewares/authMiddleware'
 import { WhatsAppAccountModel } from '../models/WhatsAppAccount'
 import {
-	sendVerificationCode,
+	// sendVerificationCode,
 	generateUserQR,
 } from '../whatsapp/whatsappClient'
 import { DockerService } from '../services/dockerService'
@@ -59,14 +59,14 @@ const sendWhatsAppCode = async (
 		const verificationCode = user.verificationCode
 
 		// Отправляем код через WhatsApp
-		const success = await sendVerificationCode(
-			user.phoneNumber,
-			verificationCode
-		)
-		if (!success) {
-			res.status(500).json({ error: 'Не удалось отправить код' })
-			return
-		}
+		// const success = await sendVerificationCode(
+		// 	user.phoneNumber,
+		// 	verificationCode
+		// )
+		// if (!success) {
+		// 	res.status(500).json({ error: 'Не удалось отправить код' })
+		// 	return
+		// }
 
 		// Проверяем, что код не изменился
 		const userAfterWhatsApp = await UserModel.findById(userId)
