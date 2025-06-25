@@ -6,7 +6,10 @@
   "scripts": {
     "start": "node dist/server.js",
     "dev": "cross-env NODE_OPTIONS=--max-old-space-size=4096 nodemon src/server.ts",
-    "build": "tsc"
+    "build": "tsc",
+    "cleanup-sessions": "node scripts/cleanup-sessions.js",
+    "sessions-analyze": "node scripts/cleanup-sessions.js list",
+    "sessions-clean": "node scripts/cleanup-sessions.js clean"
   },
   "keywords": [],
   "author": "",
