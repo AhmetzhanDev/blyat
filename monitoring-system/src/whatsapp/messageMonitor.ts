@@ -103,6 +103,12 @@ export class MessageMonitor {
 		}
 	}
 
+	private getResponseTime(company: any): number {
+		return (company?.managerResponse !== undefined && company?.managerResponse !== null) 
+			? company.managerResponse 
+			: 5
+	}
+
 	private isWithinWorkingHours(company: any): boolean {
 		// Проверяем на null, undefined и пустую строку
 		if (
@@ -208,6 +214,7 @@ export class MessageMonitor {
 				return
 			}
 			console.log(`[${timestamp}] ✅ Найдена компания:`, company)
+			console.log(`[${timestamp}] 🔍 Время ответа из БД: ${company.managerResponse} (тип: ${typeof company.managerResponse})`)
 
 			// Проверка на наличие чата в базе данных
 			let chat = await WhatsappChat.findOne({ chatId: clientCleanPhoneNumber })
@@ -285,9 +292,9 @@ export class MessageMonitor {
 				}
 
 				// Запускаем новый таймер
+				const responseTime = this.getResponseTime(company)
 				const timer = setTimeout(async () => {
 					const currentTimestamp = new Date().toISOString()
-					const responseTime = company?.managerResponse || 5
 					console.log(
 						`[${currentTimestamp}] ⚠️ Время ответа истекло для ${message.to} (чат ${clientCleanPhoneNumber})`
 					)
@@ -319,10 +326,9 @@ export class MessageMonitor {
 							)
 						}
 					}
-				}, (company?.managerResponse || 5) * 60 * 1000)
+				}, responseTime * 60 * 1000)
 
 				this.activeTimers.set(message.from, timer)
-				const responseTime = company?.managerResponse || 5 
 				console.log(
 					`[${timestamp}] ⏳ Запущен таймер на ${responseTime} минут для ${message.to} (чат ${message.from})`
 				)
@@ -439,6 +445,7 @@ export class MessageMonitor {
 				name: company.nameCompany,
 				phoneNumber: company.phoneNumber,
 			})
+			console.log(`[${timestamp}] 🔍 Время ответа из БД: ${company.managerResponse} (тип: ${typeof company.managerResponse})`)
 
 			// Проверка на наличие чата в базе данных
 			console.log(
