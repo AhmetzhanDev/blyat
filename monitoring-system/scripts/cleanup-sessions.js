@@ -18,7 +18,8 @@ const SESSIONS_DIR = path.join(process.cwd(), '.wwebjs_auth')
 // Защищенные сессии которые нельзя удалять
 const PROTECTED_SESSIONS = [
   'admin',
-  'Default'  // Также админская сессия
+  'Default',       
+  'session-admin'  
 ]
 
 /**
@@ -50,6 +51,10 @@ const getAllSessions = () => {
         if (item.startsWith('session-company-')) {
           sessionInfo.isCompanySession = true
           sessionInfo.companyId = item.replace('session-company-', '')
+        } else if (item.startsWith('session-session-company-')) {
+          sessionInfo.isCompanySession = true
+          sessionInfo.companyId = item.replace('session-session-company-', '')
+          console.warn(`⚠️  Найдена сессия с двойным префиксом: ${item}`)
         }
 
         sessions.push(sessionInfo)
