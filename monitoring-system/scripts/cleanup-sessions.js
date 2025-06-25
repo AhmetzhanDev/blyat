@@ -101,7 +101,7 @@ const cleanupSessions = async () => {
     console.log('📂 Папка с сессиями:', SESSIONS_DIR)
 
     // Подключаемся к БД
-    const mongoUri = process.env.MONGODB_URI || 'mongodb://localhost:27017/monitoring'
+    const mongoUri = process.env.MONGO_URI || 'mongodb://localhost:27017/monitoring'
     await mongoose.connect(mongoUri)
     console.log('✅ Подключение к БД установлено')
 
@@ -190,7 +190,7 @@ const listSessions = async () => {
     console.log('📊 Анализ сессий WhatsApp...')
     
     // Подключаемся к БД
-    const mongoUri = process.env.MONGODB_URI || 'mongodb://localhost:27017/monitoring'
+    const mongoUri = process.env.MONGO_URI || 'mongodb://localhost:27017/monitoring'
     await mongoose.connect(mongoUri)
 
     const allSessions = getAllSessions()
