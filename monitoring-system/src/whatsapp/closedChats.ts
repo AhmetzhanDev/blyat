@@ -179,7 +179,7 @@ const getGptResponse = async (messages: any[]) => {
 	const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY! })
 
 	const stream = await openai.beta.threads.createAndRun({
-		assistant_id: 'asst_hfqBBefvNBiC89R1TuCreQXk',
+		assistant_id: 'asst_sY7UAv24Ulcl2tjgcZ7xEruY',
 		thread: {
 			messages: [
 				{
