@@ -9,6 +9,7 @@ import { WhatsAppAccountModel } from '../models/WhatsAppAccount'
 import { CompanySettings } from '../models/CompanySettings'
 import { TelegramService } from '../telegram/telegramClient'
 import { MessageMonitor } from './messageMonitor'
+import { sendTelegramMessage } from '../OwnerTelegram/ownerTelegram'
 
 const ADMIN_ID = 'admin'
 const SESSION_DIR = path.join(process.cwd(), '.wwebjs_auth', 'Default')
@@ -24,6 +25,7 @@ const SESSION_SUBDIRS = [
 ]
 let adminClient: Client | null = null
 let isClientReady = false
+let qrNotificationSent = false // Флаг для отслеживания отправки уведомления
 
 const telegramService = TelegramService.getInstance()
 const messageMonitor = MessageMonitor.getInstance()
@@ -110,6 +112,20 @@ const saveSession = async (sessionData: any): Promise<void> => {
 		console.log('Сессия успешно сохранена во все необходимые директории')
 	} catch (error) {
 		console.error('Ошибка при сохранении сессии:', error)
+	}
+}
+const sendAdminSessionNotification = async () => {
+	if (!qrNotificationSent) {
+		try {
+			const message = `Админская сессия слетела
+				Необходимо отсканировать QR-код для восстановления доступа
+				Время: ${new Date().toLocaleString()}`
+			await sendTelegramMessage(message)
+			qrNotificationSent = true
+			console.log('Уведомление о слетевшей админской сессии отправлено в Telegram')
+		} catch (telegramError) {
+			console.error('Ошибка при отправке уведомления в Telegram:', telegramError)
+		}
 	}
 }
 
@@ -321,6 +337,8 @@ export const initAdminClient = async (): Promise<void> => {
 			try {
 				console.log('Получен QR-код для админа')
 
+				await sendAdminSessionNotification()
+
 				// Выводим QR-код в консоль только если нет существующей сессии
 				if (!hasExistingSession) {
 					console.log('\n=== АДМИНСКИЙ QR-КОД ===')
@@ -338,6 +356,7 @@ export const initAdminClient = async (): Promise<void> => {
 		adminClient.on('ready', () => {
 			console.log('Админский клиент готов к использованию')
 			isClientReady = true
+			qrNotificationSent = false 
 			io.emit('admin:ready', {
 				status: 'ready',
 				timestamp: Date.now(),
@@ -527,6 +546,8 @@ export const initializeAdminClient = async (): Promise<void> => {
 		adminClient.on('qr', async (qr: string) => {
 			try {
 				console.log('[ADMIN] Получен QR-код для админа')
+				await sendAdminSessionNotification()
+
 				console.log('\n=== АДМИНСКИЙ QR-КОД ===')
 				console.log(
 					'Отсканируйте этот QR-код для подключения админского аккаунта'
@@ -544,6 +565,7 @@ export const initializeAdminClient = async (): Promise<void> => {
 		adminClient.on('ready', () => {
 			console.log('[ADMIN] Админский клиент готов к использованию')
 			isClientReady = true
+			qrNotificationSent = false // Сбрасываем флаг при успешном подключении
 			io.emit('admin:ready', {
 				status: 'ready',
 				timestamp: Date.now(),
