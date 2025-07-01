@@ -284,11 +284,11 @@ httpServer.listen(PORT, async () => {
 			console.log(
 				`[${new Date().toISOString()}] ⚠️ TelegramService не авторизован`
 			)
-			return
+		} else {
+			console.log(
+				`[${new Date().toISOString()}] ✅ TelegramService успешно инициализирован`
+			)
 		}
-		console.log(
-			`[${new Date().toISOString()}] ✅ TelegramService успешно инициализирован`
-		)
 
 		// Инициализируем админский клиент WhatsApp
 		console.log(
