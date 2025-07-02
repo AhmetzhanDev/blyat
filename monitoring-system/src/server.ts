@@ -290,6 +290,22 @@ httpServer.listen(PORT, async () => {
 			)
 		}
 
+	} catch (error) {
+		console.error(
+			`[${new Date().toISOString()}] ❌ Ошибка при инициализации TelegramService:`,
+			error
+		)
+		try {
+			await sendTelegramMessage(`
+  Не удалось инициализировать TelegramService
+  Ошибка: ${error instanceof Error ? error.message : 'Неизвестная ошибка'}
+  Время: ${new Date().toLocaleString()}
+			`)
+		} catch (notificationError) {
+			console.error(`[${new Date().toISOString()}] ❌ Ошибка отправки уведомления об ошибке TelegramService:`, notificationError)
+		}
+	}
+	try {
 		// Инициализируем админский клиент WhatsApp
 		console.log(
 			`[${new Date().toISOString()}] 🔄 Инициализация админского клиента WhatsApp...`
