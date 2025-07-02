@@ -20,7 +20,7 @@ router.get('/settings/:userId', getCompanySettings);
 router.put('/settings/:userId/:companyId', updateCompanySettings);
 
 // Удаление компании
-router.delete('/settings/:userId/:companyId', deleteCompanySettings);
+// router.delete('/settings/:userId/:companyId', deleteCompanySettings);
 
 // Получение данных компаний для фронтенда
 router.get('/getData/:userId', getData);
